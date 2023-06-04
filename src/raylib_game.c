@@ -12,18 +12,19 @@
  *
  ********************************************************************************************/
 
+#include <stddef.h>
+#include <stdlib.h>
+
 #include "raylib.h"
-#include "screens.h"	// NOTE: Declares global (extern) variables and screens functions
+#include "screen_logo.h"
 
-#if defined(PLATFORM_WEB)
-#include <emscripten/emscripten.h>
-#endif
-
+#define GRID_PX 20
+#define GRID_W_COUNT (screenWidth/GRID_PX + 1)
+#define GRID_H_COUNT (screenHeight/GRID_PX + 1)
 //----------------------------------------------------------------------------------
 // Shared Variables Definition (global)
 // NOTE: Those variables are shared between modules through screens.h
 //----------------------------------------------------------------------------------
-GameScreen currentScreen = LOGO;
 Font font = { 0 };
 Music music = { 0 };
 Sound fxCoin = { 0 };
@@ -31,32 +32,42 @@ Sound fxCoin = { 0 };
 //----------------------------------------------------------------------------------
 // Local Variables Definition (local to this module)
 //----------------------------------------------------------------------------------
-static const int screenWidth = 800;
-static const int screenHeight = 450;
-
-// Required variables to manage screen transitions (fade-in, fade-out)
-static float transAlpha = 0.0f;
-static bool onTransition = false;
-static bool transFadeOut = false;
-static int transFromScreen = -1;
-static GameScreen transToScreen = UNKNOWN;
+static const int screenWidth = 1920;
+static const int screenHeight = 1080;
 
 //----------------------------------------------------------------------------------
 // Local Functions Declaration
 //----------------------------------------------------------------------------------
-
 static void init();
 static void deinit();
-
-static void ChangeToScreen(int screen);	    // Change to screen, no transition effect
-
-static void TransitionToScreen(int screen); // Request transition to next screen
-static void UpdateTransition(void);	    // Update transition effect
-static void DrawTransition(void);	    // Draw transition effect (full-screen rectangle)
 
 static void UpdateFrame(void);	    // Update one frame
 static void DrawFrame(void);	    // Draw one frame
 
+static struct node * addNode(struct node *head, int x, int y);
+
+#define foreach_node(_n) for(struct node *_n = Sn; _n != NULL; _n = _n->next)
+
+struct node {
+	int x;
+	int y;
+	struct node *next;
+};
+struct node *Sn = NULL;
+
+static int framesCounter = 0;
+static int tickInFrames = 5;
+static void tick();
+static bool isTicked = false;
+
+enum dir {
+	DIR_UP = 0,
+	DIR_RIGHT,
+	DIR_DOWN,
+	DIR_LEFT,
+};
+
+enum dir cur_dir = DIR_RIGHT;
 //----------------------------------------------------------------------------------
 // Main entry point
 //----------------------------------------------------------------------------------
@@ -64,10 +75,16 @@ int main(void) {
 	init();
 
 	SetTargetFPS(60);	    // Set our game to run at 60 frames-per-second
+	// TraceLog(LOG_WARNING, "%d %d", GRID_W_COUNT, GRID_H_COUNT);
 
+
+	struct node head = {.x = 10, .y = 10};
+	addNode(addNode(&head, 9, 10), 8, 10);
+	Sn = &head;
 	// Main game loop
 	while (!WindowShouldClose()) {   // Detect window close button or ESC key
-		UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
+		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
+		tick();
 		UpdateFrame();
 		DrawFrame();
 	}
@@ -76,9 +93,20 @@ int main(void) {
 
 	return 0;
 }
+
+static void tick() {
+	framesCounter += 1;
+	if (isTicked) {
+		isTicked = false;
+	}
+	if (framesCounter >= tickInFrames) {
+		framesCounter = 0;
+		isTicked = true;
+	}
+}
 static void init() {
 	InitWindow(screenWidth, screenHeight, "raylib game template");
-
+	ToggleFullscreen();
 	InitAudioDevice();	    // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
@@ -90,28 +118,12 @@ static void init() {
 	PlayMusicStream(music);
 
 	// Setup and init first screen
-	currentScreen = LOGO;
 	InitLogoScreen();
 }
 
 static void deinit() {
 	// Unload current screen data before closing
-	switch (currentScreen) {
-	case LOGO:
-		UnloadLogoScreen();
-		break;
-	case TITLE:
-		UnloadTitleScreen();
-		break;
-	case GAMEPLAY:
-		UnloadGameplayScreen();
-		break;
-	case ENDING:
-		UnloadEndingScreen();
-		break;
-	default:
-		break;
-	}
+	UnloadLogoScreen();
 
 	// Unload global data loaded
 	UnloadFont(font);
@@ -123,178 +135,71 @@ static void deinit() {
 	CloseWindow();	    // Close window and OpenGL context
 }
 
-
-//----------------------------------------------------------------------------------
-// Module specific Functions Definition
-//----------------------------------------------------------------------------------
-// Change to next screen, no transition
-static void ChangeToScreen(GameScreen screen) {
-	// Unload current screen
-	switch (currentScreen) {
-	case LOGO:
-		UnloadLogoScreen();
-		break;
-	case TITLE:
-		UnloadTitleScreen();
-		break;
-	case GAMEPLAY:
-		UnloadGameplayScreen();
-		break;
-	case ENDING:
-		UnloadEndingScreen();
-		break;
-	default:
-		break;
-	}
-
-	// Init next screen
-	switch (screen) {
-	case LOGO:
-		InitLogoScreen();
-		break;
-	case TITLE:
-		InitTitleScreen();
-		break;
-	case GAMEPLAY:
-		InitGameplayScreen();
-		break;
-	case ENDING:
-		InitEndingScreen();
-		break;
-	default:
-		break;
-	}
-
-	currentScreen = screen;
+static struct node * addNode(struct node *head, int x, int y) {
+	struct node *n = (struct node *)malloc(sizeof(struct node));
+	n->x = x;
+	n->y = y;
+	n->next = NULL;
+	head->next = n;
+	return n;
 }
 
-// Request transition to next screen
-static void TransitionToScreen(GameScreen screen) {
-	onTransition = true;
-	transFadeOut = false;
-	transFromScreen = currentScreen;
-	transToScreen = screen;
-	transAlpha = 0.0f;
-}
-
-// Update transition effect (fade-in, fade-out)
-static void UpdateTransition(void) {
-	if (!transFadeOut) {
-		transAlpha += 0.05f;
-
-		// NOTE: Due to float internal representation, condition jumps on 1.0f instead of 1.05f
-		// For that reason we compare against 1.01f, to avoid last frame loading stop
-		if (transAlpha > 1.01f) {
-			transAlpha = 1.0f;
-
-			// Unload current screen
-			switch (transFromScreen) {
-			case LOGO:
-				UnloadLogoScreen();
-				break;
-			case TITLE:
-				UnloadTitleScreen();
-				break;
-			case OPTIONS:
-				UnloadOptionsScreen();
-				break;
-			case GAMEPLAY:
-				UnloadGameplayScreen();
-				break;
-			case ENDING:
-				UnloadEndingScreen();
-				break;
-			default:
-				break;
-			}
-
-			// Load next screen
-			switch (transToScreen) {
-			case LOGO:
-				InitLogoScreen();
-				break;
-			case TITLE:
-				InitTitleScreen();
-				break;
-			case GAMEPLAY:
-				InitGameplayScreen();
-				break;
-			case ENDING:
-				InitEndingScreen();
-				break;
-			default:
-				break;
-			}
-
-			currentScreen = transToScreen;
-
-			// Activate fade out effect to next loaded screen
-			transFadeOut = true;
-		}
-	} else { // Transition fade out logic
-		transAlpha -= 0.02f;
-
-		if (transAlpha < -0.01f) {
-			transAlpha = 0.0f;
-			transFadeOut = false;
-			onTransition = false;
-			transFromScreen = -1;
-			transToScreen = UNKNOWN;
-		}
+static void updateSnake(void) {
+	struct node *n = (struct node *)malloc(sizeof(struct node));
+	switch (cur_dir) {
+	case DIR_UP:
+		n->x = Sn->x;
+		n->y = Sn->y - 1;
+		break;
+	case DIR_RIGHT:
+		n->x = Sn->x + 1;
+		n->y = Sn->y;
+		break;
+	case DIR_DOWN:
+		n->x = Sn->x;
+		n->y = Sn->y + 1;
+		break;
+	case DIR_LEFT:
+		n->x = Sn->x - 1;
+		n->y = Sn->y;
+		break;
 	}
-}
-
-// Draw transition effect (full-screen rectangle)
-static void DrawTransition(void) {
-	DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, transAlpha));
+	n->next = Sn;
+	Sn = n;
 }
 
 // Update game frame
 static void UpdateFrame(void) {
-	if (onTransition) {
-		UpdateTransition();	// Update transition (fade-in, fade-out)
-		return;
+	//UpdateLogoScreen();
+	if (IsKeyPressed(KEY_UP)) {
+		cur_dir = DIR_UP;
+	} else if (IsKeyPressed(KEY_RIGHT)) {
+		cur_dir = DIR_RIGHT;
+	} else if (IsKeyPressed(KEY_DOWN)) {
+		cur_dir = DIR_DOWN;
+	} else if (IsKeyPressed(KEY_LEFT)) {
+		cur_dir = DIR_LEFT;
 	}
-	switch(currentScreen) {
-	case LOGO: {
-		UpdateLogoScreen();
 
-		if (FinishLogoScreen()) {
-			TransitionToScreen(TITLE);
-		}
-	} break;
-	case TITLE: {
-		UpdateTitleScreen();
+	if (isTicked) {
+		updateSnake();
+	}
+	
+}
 
-		if (FinishTitleScreen() == 1) {
-			TransitionToScreen(OPTIONS);
-		} else if (FinishTitleScreen() == 2) {
-			TransitionToScreen(GAMEPLAY);
-		}
-	} break;
-	case OPTIONS:{
-		UpdateOptionsScreen();
+static void drawGrid(void) {
+	for (unsigned i = 0; i < GRID_W_COUNT; i++) {
+		DrawLine(i * GRID_PX, 0, i * GRID_PX, screenHeight, BLACK);
+	}
+	for (unsigned i = 0; i < GRID_H_COUNT; i++) {
+		DrawLine(0, i * GRID_PX, screenWidth, i * GRID_PX, BLACK);
+	}
+}
 
-		if (FinishOptionsScreen()) {
-			TransitionToScreen(TITLE);
-		}
-	} break;
-	case GAMEPLAY:{
-		UpdateGameplayScreen();
-
-		if (FinishGameplayScreen() == 1) {
-			TransitionToScreen(ENDING);
-		}
-		//else if (FinishGameplayScreen() == 2) TransitionToScreen(TITLE);
-	} break;
-	case ENDING: {
-		UpdateEndingScreen();
-
-		if (FinishEndingScreen() == 1) {
-			TransitionToScreen(TITLE);
-		}
-	} break;
-	default: break;
+static void drawSnake(void) {
+	foreach_node(n) {
+		// TraceLog(LOG_WARNING, "x=%d y=%d", n->x, n->y);
+		DrawRectangle(n->x * GRID_PX, n->y * GRID_PX, GRID_PX, GRID_PX, BLUE);
 	}
 }
 
@@ -302,32 +207,10 @@ static void DrawFrame(void) {
 	BeginDrawing();
 
 	ClearBackground(RAYWHITE);
-
-	switch(currentScreen) {
-	case LOGO:
-		DrawLogoScreen();
-		break;
-	case TITLE:
-		DrawTitleScreen();
-		break;
-	case OPTIONS:
-		DrawOptionsScreen();
-		break;
-	case GAMEPLAY:
-		DrawGameplayScreen();
-		break;
-	case ENDING:
-		DrawEndingScreen();
-		break;
-	default:
-		break;
-	}
-
-	// Draw full screen rectangle in front of everything
-	if (onTransition) {
-		DrawTransition();
-	}
+	//DrawLogoScreen();
 	//DrawFPS(10, 10);
+	drawGrid();
+	drawSnake();
 
 	EndDrawing();
 }
