@@ -63,10 +63,15 @@ enum dir {
 #define IS_DIR_HOR(_dir) ((_dir) == DIR_LEFT || (_dir) == DIR_RIGHT)
 #define IS_DIR_VER(_dir) ((_dir) == DIR_UP || (_dir) == DIR_DOWN)
 
+struct eat {
+	int x;
+	int y;
+};
+
 struct game_ctx {
 	struct node * head;
 	enum dir dir;
-	Vector2 eat;
+	struct eat eat;
 };
 
 struct game_ctx * G = NULL;
@@ -76,7 +81,7 @@ struct game_ctx * G = NULL;
 
 static void init() {
 	InitWindow(screenWidth, screenHeight, "raylib game template");
-	ToggleFullscreen();
+//	ToggleFullscreen();
 	InitAudioDevice();	    // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
@@ -106,7 +111,7 @@ struct game_ctx* init_game(void) {
 	ctx->head = n;
 	ctx->dir = DIR_RIGHT;
 
-	ctx->eat = (struct Vector2){.x = 20, .y = 15};
+	ctx->eat = (struct eat){.x = 20, .y = 15};
 
 	return ctx;
 }
@@ -187,8 +192,16 @@ static void shrinkSnake(struct game_ctx *g) {
 }
 
 static void updateSnake(struct game_ctx *g) {
-	g->head = growSnake(g);
-	shrinkSnake(g);
+
+}
+
+static unsigned checkEat(struct game_ctx *g) {
+	if (g->head->x == g->eat.x && g->head->y == g->eat.y) {
+		g->eat.x = GetRandomValue(0, GRID_W_COUNT);
+		g->eat.y = GetRandomValue(0, GRID_H_COUNT);
+		return 1;
+	}
+	return 0;
 }
 
 static void updateEat(struct game_ctx *g) {
@@ -198,16 +211,20 @@ static void updateEat(struct game_ctx *g) {
 
 static void UpdateFrame(struct game_ctx *g) {
 	if (isTicked) {
-		updateSnake(g);
-		updateEat(g);
+		g->head = growSnake(g);
+
+		unsigned is_eat = checkEat(g);
+		if (!is_eat) {
+			shrinkSnake(g);
+		}
 	}
 }
 
 static void drawGrid(void) {
-	for (unsigned i = 0; i < GRID_W_COUNT; i++) {
+	for (int i = 0; i < GRID_W_COUNT; i++) {
 		DrawLine(i * GRID_PX, 0, i * GRID_PX, screenHeight, LIGHTGRAY);
 	}
-	for (unsigned i = 0; i < GRID_H_COUNT; i++) {
+	for (int i = 0; i < GRID_H_COUNT; i++) {
 		DrawLine(0, i * GRID_PX, screenWidth, i * GRID_PX, LIGHTGRAY);
 	}
 }
