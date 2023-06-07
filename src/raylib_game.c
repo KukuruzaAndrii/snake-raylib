@@ -22,22 +22,24 @@
 #define GRID_PX 43
 #define EAT_PX_SZ (GRID_PX/2)
 
-#define SCREEN_WIDTH  1920
-#define SCREEN_HEIGHT 1080
+#define SCREEN_WIDTH  1700
+#define SCREEN_HEIGHT 1000
 
-#define GRID_W_COUNT (SCREEN_WIDTH/GRID_PX + 1)
-#define GRID_H_COUNT (SCREEN_HEIGHT/GRID_PX + 1)
-//----------------------------------------------------------------------------------
-// Shared Variables Definition (global)
-// NOTE: Those variables are shared between modules through screens.h
-//----------------------------------------------------------------------------------
+#define W_TILE_COUNT (SCREEN_WIDTH/GRID_PX)
+#define H_TILE_COUNT (SCREEN_HEIGHT/GRID_PX)
+
+#define W_TILE_LAST_NUM (W_TILE_COUNT - 1)
+#define H_TILE_LAST_NUM (H_TILE_COUNT - 1)
+
+#define GRID_W_LINE_COUNT (W_TILE_COUNT + 1)
+#define GRID_H_LINE_COUNT (H_TILE_COUNT + 1)
+
+#define SCREEN_W_OFFSET ((SCREEN_WIDTH - W_TILE_COUNT * GRID_PX)/2)
+#define SCREEN_H_OFFSET ((SCREEN_HEIGHT - H_TILE_COUNT * GRID_PX)/2)
+
 Font font = { 0 };
 Music music = { 0 };
 Sound fxCoin = { 0 };
-
-//----------------------------------------------------------------------------------
-// Local Variables Definition (local to this module)
-//----------------------------------------------------------------------------------
 
 
 static struct node * addNode(struct node *head, int x, int y);
@@ -78,14 +80,9 @@ struct game_ctx {
 
 };
 
-struct game_ctx * G = NULL;
-
-
-
-
 static void init() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib game template");
-	ToggleFullscreen();
+	//ToggleFullscreen();
 	InitAudioDevice();	    // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
@@ -103,7 +100,7 @@ static void init() {
 
 
 struct game_ctx* init_game(void) {
-	struct game_ctx *g = (struct game_g *)malloc(sizeof(struct game_ctx)) ;
+	struct game_ctx *g = (struct game_ctx *)malloc(sizeof(struct game_ctx)) ;
 
 	struct node *n = (struct node *)malloc(sizeof(struct node));
 	n->x = 10;
@@ -204,8 +201,8 @@ static void updateSnake(struct game_ctx *g) {
 
 static unsigned checkEat(struct game_ctx *g) {
 	if (g->head->x == g->eat.x && g->head->y == g->eat.y) {
-		g->eat.x = GetRandomValue(0, GRID_W_COUNT - 1);
-		g->eat.y = GetRandomValue(0, GRID_H_COUNT - 1);
+		g->eat.x = GetRandomValue(0, W_TILE_LAST_NUM);
+		g->eat.y = GetRandomValue(0, H_TILE_LAST_NUM);
 		g->score += 1;
 		return 1;
 	}
@@ -213,7 +210,7 @@ static unsigned checkEat(struct game_ctx *g) {
 }
 
 static unsigned check_game_over(struct game_ctx *g) {
-	if (g->head->x == GRID_W_COUNT) {
+	if (g->head->x == W_TILE_COUNT || g->head->y == H_TILE_COUNT) {
 		return 1;
 	}
 
@@ -221,6 +218,11 @@ static unsigned check_game_over(struct game_ctx *g) {
 }
 
 static void UpdateFrame(struct game_ctx *g) {
+	g->is_game_over = check_game_over(g);
+	if (g->is_game_over) {
+		return;
+	}
+
 	if (g->is_ticked) {
 		g->head = growSnake(g);
 
@@ -228,17 +230,15 @@ static void UpdateFrame(struct game_ctx *g) {
 		if (!is_eat) {
 			shrinkSnake(g);
 		}
-
-		g->is_game_over = check_game_over(g);
 	}
 }
 
 static void drawGrid(void) {
-	for (int i = 0; i < GRID_W_COUNT; i++) {
-		DrawLine(i * GRID_PX, 0, i * GRID_PX, SCREEN_HEIGHT, LIGHTGRAY);
+	for (int i = 0; i < GRID_W_LINE_COUNT; i++) {
+		DrawLine(SCREEN_W_OFFSET + i * GRID_PX, SCREEN_H_OFFSET + 0, SCREEN_W_OFFSET + i * GRID_PX, SCREEN_H_OFFSET + H_TILE_COUNT * GRID_PX, LIGHTGRAY);
 	}
-	for (int i = 0; i < GRID_H_COUNT; i++) {
-		DrawLine(0, i * GRID_PX, SCREEN_WIDTH, i * GRID_PX, LIGHTGRAY);
+	for (int i = 0; i < GRID_H_LINE_COUNT; i++) {
+		DrawLine(SCREEN_W_OFFSET + 0, SCREEN_H_OFFSET + i * GRID_PX, SCREEN_W_OFFSET + W_TILE_COUNT * GRID_PX, SCREEN_H_OFFSET + i * GRID_PX, LIGHTGRAY);
 	}
 }
 
@@ -300,15 +300,15 @@ int main(void) {
 	SetTargetFPS(60);
 	// TraceLog(LOG_WARNING, "%d %d", GRID_W_COUNT, GRID_H_COUNT);
 
-	G = init_game();
+	struct game_ctx *g = init_game();
 
 	// Main game loop
 	while (!WindowShouldClose()) {
 		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
-		tick(G);
-		handleControl(G);
-		UpdateFrame(G);
-		DrawFrame(G);
+		tick(g);
+		handleControl(g);
+		UpdateFrame(g);
+		DrawFrame(g);
 	}
 
 	deinit();
