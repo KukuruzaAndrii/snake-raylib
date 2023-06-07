@@ -22,8 +22,8 @@
 #define GRID_PX 43
 #define EAT_PX_SZ (GRID_PX/2)
 
-#define SCREEN_WIDTH  1700
-#define SCREEN_HEIGHT 1000
+#define SCREEN_WIDTH  1920
+#define SCREEN_HEIGHT 1080
 
 #define W_TILE_COUNT (SCREEN_WIDTH/GRID_PX)
 #define H_TILE_COUNT (SCREEN_HEIGHT/GRID_PX)
@@ -36,6 +36,9 @@
 
 #define SCREEN_W_OFFSET ((SCREEN_WIDTH - W_TILE_COUNT * GRID_PX)/2)
 #define SCREEN_H_OFFSET ((SCREEN_HEIGHT - H_TILE_COUNT * GRID_PX)/2)
+
+#define X(_x) (_x + SCREEN_W_OFFSET)
+#define Y(_y) (_y + SCREEN_H_OFFSET)
 
 Font font = { 0 };
 Music music = { 0 };
@@ -82,7 +85,7 @@ struct game_ctx {
 
 static void init() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib game template");
-	//ToggleFullscreen();
+	ToggleFullscreen();
 	InitAudioDevice();	    // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
@@ -161,26 +164,34 @@ static struct node * addNode(struct node *head, int x, int y) {
 	return n;
 }
 
-static struct node* growSnake(struct game_ctx *g) {
-	struct node *n = (struct node *)malloc(sizeof(struct node));
-	switch (g->dir) {
+static Vector2 get_next_head_pos(struct node* head, enum dir dir) {
+	struct Vector2 v = {0};
+	switch (dir) {
 	case DIR_UP:
-		n->x = g->head->x;
-		n->y = g->head->y - 1;
+		v.x = head->x;
+		v.y = head->y - 1;
 		break;
 	case DIR_RIGHT:
-		n->x = g->head->x + 1;
-		n->y = g->head->y;
+		v.x = head->x + 1;
+		v.y = head->y;
 		break;
 	case DIR_DOWN:
-		n->x = g->head->x;
-		n->y = g->head->y + 1;
+		v.x = head->x;
+		v.y = head->y + 1;
 		break;
 	case DIR_LEFT:
-		n->x = g->head->x - 1;
-		n->y = g->head->y;
+		v.x = head->x - 1;
+		v.y = head->y;
 		break;
 	}
+	return v;
+}
+
+static struct node* growSnake(struct game_ctx *g) {
+	struct node *n = (struct node *)malloc(sizeof(struct node));
+	struct Vector2 next_head_pos = get_next_head_pos(g->head, g->dir);
+	n->x = next_head_pos.x;
+	n->y = next_head_pos.y;
 	n->next = g->head;
 	return n;
 }
@@ -210,7 +221,8 @@ static unsigned checkEat(struct game_ctx *g) {
 }
 
 static unsigned check_game_over(struct game_ctx *g) {
-	if (g->head->x == W_TILE_COUNT || g->head->y == H_TILE_COUNT) {
+	struct Vector2 next_head_pos = get_next_head_pos(g->head, g->dir);
+	if (next_head_pos.x == W_TILE_COUNT || next_head_pos.y == H_TILE_COUNT || next_head_pos.x < 0 || next_head_pos.y < 0) {
 		return 1;
 	}
 
@@ -218,12 +230,12 @@ static unsigned check_game_over(struct game_ctx *g) {
 }
 
 static void UpdateFrame(struct game_ctx *g) {
-	g->is_game_over = check_game_over(g);
-	if (g->is_game_over) {
-		return;
-	}
-
 	if (g->is_ticked) {
+		g->is_game_over = check_game_over(g);
+		if (g->is_game_over) {
+			return;
+		}
+
 		g->head = growSnake(g);
 
 		unsigned is_eat = checkEat(g);
@@ -235,22 +247,26 @@ static void UpdateFrame(struct game_ctx *g) {
 
 static void drawGrid(void) {
 	for (int i = 0; i < GRID_W_LINE_COUNT; i++) {
-		DrawLine(SCREEN_W_OFFSET + i * GRID_PX, SCREEN_H_OFFSET + 0, SCREEN_W_OFFSET + i * GRID_PX, SCREEN_H_OFFSET + H_TILE_COUNT * GRID_PX, LIGHTGRAY);
+		DrawLine(X(i * GRID_PX), Y(0), X(i * GRID_PX), Y(H_TILE_COUNT * GRID_PX), LIGHTGRAY);
 	}
 	for (int i = 0; i < GRID_H_LINE_COUNT; i++) {
-		DrawLine(SCREEN_W_OFFSET + 0, SCREEN_H_OFFSET + i * GRID_PX, SCREEN_W_OFFSET + W_TILE_COUNT * GRID_PX, SCREEN_H_OFFSET + i * GRID_PX, LIGHTGRAY);
+		DrawLine(X(0), Y(i * GRID_PX), X(W_TILE_COUNT * GRID_PX), Y(i * GRID_PX), LIGHTGRAY);
 	}
 }
 
 static void drawSnake(struct game_ctx *g) {
+	Color c = SKYBLUE;
+	if (g->is_game_over) {
+		c = RED;
+	}
 	foreach_node(g->head, n) {
 		// TraceLog(LOG_WARNING, "x=%d y=%d", n->x, n->y);
-		DrawRectangle(n->x * GRID_PX, n->y * GRID_PX, GRID_PX, GRID_PX, SKYBLUE);
+		DrawRectangle(X(n->x * GRID_PX), Y(n->y * GRID_PX), GRID_PX, GRID_PX, c);
 	}
 }
 
 static void drawEat(struct game_ctx *g) {
-	DrawRectangle(g->eat.x * GRID_PX + EAT_PX_SZ/2, g->eat.y * GRID_PX + EAT_PX_SZ/2, EAT_PX_SZ, EAT_PX_SZ, MAGENTA);
+	DrawRectangle(X(g->eat.x * GRID_PX + EAT_PX_SZ/2), Y(g->eat.y * GRID_PX + EAT_PX_SZ/2), EAT_PX_SZ, EAT_PX_SZ, MAGENTA);
 }
 
 static void drawScore(struct game_ctx *g) {
