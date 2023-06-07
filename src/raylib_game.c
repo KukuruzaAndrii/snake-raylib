@@ -164,6 +164,15 @@ static struct node * addNode(struct node *head, int x, int y) {
 	return n;
 }
 
+static unsigned isContainsNodeByVal(struct node *head, int x, int y) {
+	foreach_node(head, n) {
+		if (n->x == x && n->y == y) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 static Vector2 get_next_head_pos(struct node* head, enum dir dir) {
 	struct Vector2 v = {0};
 	switch (dir) {
@@ -222,7 +231,12 @@ static unsigned checkEat(struct game_ctx *g) {
 
 static unsigned check_game_over(struct game_ctx *g) {
 	struct Vector2 next_head_pos = get_next_head_pos(g->head, g->dir);
+	// wall
 	if (next_head_pos.x == W_TILE_COUNT || next_head_pos.y == H_TILE_COUNT || next_head_pos.x < 0 || next_head_pos.y < 0) {
+		return 1;
+	}
+	// self-eat
+	if (isContainsNodeByVal(g->head, next_head_pos.x, next_head_pos.y)) {
 		return 1;
 	}
 
