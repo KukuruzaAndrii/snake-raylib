@@ -19,7 +19,7 @@
 #include "screen_logo.h"
 
 // GRID_SIZE
-#define GRID_PX 43
+#define GRID_PX 63
 #define EAT_PX_SZ (GRID_PX/2)
 
 #define SCREEN_WIDTH  1920
@@ -40,6 +40,15 @@
 #define X(_x) (_x + SCREEN_W_OFFSET)
 #define Y(_y) (_y + SCREEN_H_OFFSET)
 
+#define EAT_COLOR MAGENTA
+
+#define SNAKE_BODY_COLOR SKYBLUE
+#define SNAKE_HEAD_COLOR BLUE
+
+#define SNAKE_GAME_OVER_COLOR RED
+#define SNAKE_EAT_COLOR MAGENTA
+
+
 Font font = { 0 };
 Music music = { 0 };
 Sound fxCoin = { 0 };
@@ -56,7 +65,7 @@ struct node {
 };
 
 static int framesCounter = 0;
-static int tickInFrames = 8;
+static int tickInFrames = 9;
 
 enum dir {
 	DIR_UP = 0,
@@ -80,7 +89,7 @@ struct game_ctx {
 	int score;
 	unsigned is_ticked:1;
 	unsigned is_game_over:1;
-
+	unsigned is_eat:1;
 };
 
 static void init() {
@@ -219,10 +228,21 @@ static void updateSnake(struct game_ctx *g) {
 
 }
 
+static Vector2 get_next_eat() {
+	return (struct Vector2){
+		.x = GetRandomValue(0, W_TILE_LAST_NUM),
+		.y = GetRandomValue(0, H_TILE_LAST_NUM),
+	};
+}
+
 static unsigned checkEat(struct game_ctx *g) {
 	if (g->head->x == g->eat.x && g->head->y == g->eat.y) {
-		g->eat.x = GetRandomValue(0, W_TILE_LAST_NUM);
-		g->eat.y = GetRandomValue(0, H_TILE_LAST_NUM);
+		struct Vector2 next_eat_pos = get_next_eat();
+		while (isContainsNodeByVal(g->head, next_eat_pos.x, next_eat_pos.y)) {
+			next_eat_pos = get_next_eat();
+		}
+		g->eat.x = next_eat_pos.x;
+		g->eat.y = next_eat_pos.y;
 		g->score += 1;
 		return 1;
 	}
@@ -244,18 +264,16 @@ static unsigned check_game_over(struct game_ctx *g) {
 }
 
 static void UpdateFrame(struct game_ctx *g) {
-	if (g->is_ticked) {
-		g->is_game_over = check_game_over(g);
-		if (g->is_game_over) {
-			return;
-		}
+	g->is_game_over = check_game_over(g);
+	if (g->is_game_over) {
+		return;
+	}
 
-		g->head = growSnake(g);
+	g->head = growSnake(g);
 
-		unsigned is_eat = checkEat(g);
-		if (!is_eat) {
-			shrinkSnake(g);
-		}
+	g->is_eat = checkEat(g);
+	if (!g->is_eat) {
+		shrinkSnake(g);
 	}
 }
 
@@ -269,18 +287,24 @@ static void drawGrid(void) {
 }
 
 static void drawSnake(struct game_ctx *g) {
-	Color c = SKYBLUE;
+	Color head_c = SNAKE_HEAD_COLOR;
+	Color body_c = SNAKE_BODY_COLOR;
 	if (g->is_game_over) {
-		c = RED;
+		body_c = SNAKE_GAME_OVER_COLOR;
+		head_c = SNAKE_GAME_OVER_COLOR;
 	}
-	foreach_node(g->head, n) {
+	if (g->is_eat) {
+		head_c = SNAKE_EAT_COLOR;
+	}
+	DrawRectangle(X(g->head->x * GRID_PX), Y(g->head->y * GRID_PX), GRID_PX, GRID_PX, head_c);
+	foreach_node(g->head->next, n) {
 		// TraceLog(LOG_WARNING, "x=%d y=%d", n->x, n->y);
-		DrawRectangle(X(n->x * GRID_PX), Y(n->y * GRID_PX), GRID_PX, GRID_PX, c);
+		DrawRectangle(X(n->x * GRID_PX), Y(n->y * GRID_PX), GRID_PX, GRID_PX, body_c);
 	}
 }
 
 static void drawEat(struct game_ctx *g) {
-	DrawRectangle(X(g->eat.x * GRID_PX + EAT_PX_SZ/2), Y(g->eat.y * GRID_PX + EAT_PX_SZ/2), EAT_PX_SZ, EAT_PX_SZ, MAGENTA);
+	DrawRectangle(X(g->eat.x * GRID_PX + EAT_PX_SZ/2), Y(g->eat.y * GRID_PX + EAT_PX_SZ/2), EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
 }
 
 static void drawScore(struct game_ctx *g) {
@@ -298,8 +322,8 @@ static void DrawFrame(struct game_ctx *g) {
 	ClearBackground(RAYWHITE);
 	//DrawLogoScreen();
 	//DrawFPS(10, 10);
-	drawGrid();
 	drawSnake(g);
+	drawGrid();
 	drawEat(g);
 	drawScore(g);
 	if (g->is_game_over) {
@@ -328,7 +352,7 @@ int main(void) {
 	init();
 
 	SetTargetFPS(60);
-	// TraceLog(LOG_WARNING, "%d %d", GRID_W_COUNT, GRID_H_COUNT);
+
 
 	struct game_ctx *g = init_game();
 
@@ -336,8 +360,12 @@ int main(void) {
 	while (!WindowShouldClose()) {
 		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
 		tick(g);
-		handleControl(g);
-		UpdateFrame(g);
+		if (!g->is_game_over) {
+			handleControl(g);
+		}
+		if (g->is_ticked) {
+			UpdateFrame(g);
+		}
 		DrawFrame(g);
 	}
 
