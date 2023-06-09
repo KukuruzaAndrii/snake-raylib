@@ -19,7 +19,7 @@
 #include "screen_logo.h"
 
 // GRID_SIZE
-#define GRID_PX 63
+#define GRID_PX 45
 #define EAT_PX_SZ (GRID_PX/2)
 
 #define SCREEN_WIDTH  1920
@@ -65,7 +65,7 @@ struct node {
 };
 
 static int framesCounter = 0;
-static int tickInFrames = 9;
+static int tickInFrames = 7;
 
 enum dir {
 	DIR_UP = 0,
@@ -90,6 +90,7 @@ struct game_ctx {
 	unsigned is_ticked:1;
 	unsigned is_game_over:1;
 	unsigned is_eat:1;
+	unsigned is_was_pressed_before_tick:1;
 };
 
 static void init() {
@@ -104,63 +105,88 @@ static void init() {
 
 	SetMusicVolume(music, 1.0f);
 	PlayMusicStream(music);
-
-	// Setup and init first screen
-	InitLogoScreen();
 }
 
 
+static void set_init_values(struct game_ctx* g) {
+	// free previous memory in case of restart
+	for(struct node *n = g->head->next, *temp; n != NULL;) {
+		temp = n->next;
+		TraceLog(LOG_WARNING, "%p", n);
+		free(n);
+		n = temp;
+	}
 
-struct game_ctx* init_game(void) {
-	struct game_ctx *g = (struct game_ctx *)malloc(sizeof(struct game_ctx)) ;
+	g->head->x = 10;
+	g->head->y = 10;
+	g->head->next = NULL;
 
-	struct node *n = (struct node *)malloc(sizeof(struct node));
-	n->x = 10;
-	n->y = 10;
-	n->next = NULL;
+	addNode(addNode(g->head, 9, 10), 8, 10);
 
-	addNode(addNode(n, 9, 10), 8, 10);
-
-	g->head = n;
 	g->dir = DIR_RIGHT;
 
 	g->eat = (struct eat){.x = 20, .y = 15};
 	g->score = 0;
 	g->is_ticked = 0;
 	g->is_game_over = 0;
+	g->is_was_pressed_before_tick = 0;
+}
 
+static struct game_ctx* init_game(void) {
+	struct game_ctx *g = (struct game_ctx *)malloc(sizeof(struct game_ctx));
+
+	struct node *n = (struct node *)malloc(sizeof(struct node));
+	g->head = n;
+	g->head->next = NULL;
+	set_init_values(g);
 	return g;
 }
 
-void handleControl(struct game_ctx *ctx) {
+void handleControl(struct game_ctx *g) {
+	if (g->is_game_over) {
+		if (IsKeyPressed(KEY_R)) {
+			set_init_values(g);
+		}
+		return;
+	}
+
+	if (g->is_was_pressed_before_tick) {
+		return;
+	}
+
 	if (IsKeyPressed(KEY_UP)) {
-		if (IS_DIR_HOR(ctx->dir)) {
-			ctx->dir = DIR_UP;
+		if (IS_DIR_HOR(g->dir)) {
+			g->dir = DIR_UP;
+			g->is_was_pressed_before_tick = true;
 		}
 	} else if (IsKeyPressed(KEY_RIGHT)) {
-		if (IS_DIR_VER(ctx->dir)) {
-			ctx->dir = DIR_RIGHT;
+		if (IS_DIR_VER(g->dir)) {
+			g->dir = DIR_RIGHT;
+			g->is_was_pressed_before_tick = true;
 		}
 	} else if (IsKeyPressed(KEY_DOWN)) {
-		if (IS_DIR_HOR(ctx->dir)) {
-			ctx->dir = DIR_DOWN;
+		if (IS_DIR_HOR(g->dir)) {
+			g->dir = DIR_DOWN;
+			g->is_was_pressed_before_tick = true;
 		}
 	} else if (IsKeyPressed(KEY_LEFT)) {
-		if (IS_DIR_VER(ctx->dir)) {
-			ctx->dir = DIR_LEFT;
+		if (IS_DIR_VER(g->dir)) {
+			g->dir = DIR_LEFT;
+			g->is_was_pressed_before_tick = true;
 		}
 	}
 }
 
 
-static void tick(struct game_ctx *ctx) {
+static void tick(struct game_ctx *g) {
 	framesCounter += 1;
-	if (ctx->is_ticked) {
-		ctx->is_ticked = false;
+	if (g->is_ticked) {
+		g->is_ticked = false;
+		g->is_was_pressed_before_tick = false;
 	}
 	if (framesCounter >= tickInFrames) {
 		framesCounter = 0;
-		ctx->is_ticked = true;
+		g->is_ticked = true;
 	}
 }
 
@@ -289,13 +315,14 @@ static void drawGrid(void) {
 static void drawSnake(struct game_ctx *g) {
 	Color head_c = SNAKE_HEAD_COLOR;
 	Color body_c = SNAKE_BODY_COLOR;
+	if (g->is_eat) {
+		head_c = SNAKE_EAT_COLOR;
+	}
 	if (g->is_game_over) {
 		body_c = SNAKE_GAME_OVER_COLOR;
 		head_c = SNAKE_GAME_OVER_COLOR;
 	}
-	if (g->is_eat) {
-		head_c = SNAKE_EAT_COLOR;
-	}
+
 	DrawRectangle(X(g->head->x * GRID_PX), Y(g->head->y * GRID_PX), GRID_PX, GRID_PX, head_c);
 	foreach_node(g->head->next, n) {
 		// TraceLog(LOG_WARNING, "x=%d y=%d", n->x, n->y);
@@ -334,9 +361,11 @@ static void DrawFrame(struct game_ctx *g) {
 	EndDrawing();
 }
 
-static void deinit() {
-	// Unload current screen data before closing
-	UnloadLogoScreen();
+static void deinit(struct game_ctx *g) {
+	// for free snake
+	set_init_values(g);
+	free(g->head);
+	free(g);
 
 	// Unload global data loaded
 	UnloadFont(font);
@@ -360,16 +389,14 @@ int main(void) {
 	while (!WindowShouldClose()) {
 		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
 		tick(g);
-		if (!g->is_game_over) {
-			handleControl(g);
-		}
+		handleControl(g);
 		if (g->is_ticked) {
 			UpdateFrame(g);
 		}
 		DrawFrame(g);
 	}
 
-	deinit();
+	deinit(g);
 
 	return 0;
 }
