@@ -48,6 +48,8 @@
 #define SNAKE_GAME_OVER_COLOR RED
 #define SNAKE_EAT_COLOR MAGENTA
 
+#define LABEL_GAME_OVER_SIZE 190
+
 
 Font font = { 0 };
 Music music = { 0 };
@@ -99,7 +101,7 @@ static void init() {
 	InitAudioDevice();	    // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
-	font = LoadFont("resources/mecha.png");
+	font = LoadFontEx("resources/TiltNeon-Regular.ttf", LABEL_GAME_OVER_SIZE, NULL, 0);
 	music = LoadMusicStream("resources/ambient.ogg");
 	fxCoin = LoadSound("resources/coin.wav");
 
@@ -340,7 +342,10 @@ static void drawScore(struct game_ctx *g) {
 }
 
 static void drawGameOver(struct game_ctx *g) {
-	DrawText("GAME OVER", SCREEN_WIDTH/2 - 400, SCREEN_HEIGHT/2 - 70, 140, DARKGRAY);
+	const char label[10] = "GAME OVER";
+	Vector2 label_sz = MeasureTextEx(font, &label, LABEL_GAME_OVER_SIZE, 0);
+	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = (SCREEN_HEIGHT - label_sz.y)/2};
+	DrawTextEx(font, &label, label_pos, LABEL_GAME_OVER_SIZE, 0, DARKGRAY);
 }
 
 static void DrawFrame(struct game_ctx *g) {
