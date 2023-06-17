@@ -14,9 +14,12 @@
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "raylib.h"
 #include "screen_logo.h"
+
+#define countof(_a) ((sizeof _a)/(sizeof _a[0]))
 
 // GRID_SIZE
 #define GRID_PX 45
@@ -49,6 +52,9 @@
 #define SNAKE_EAT_COLOR MAGENTA
 
 #define LABEL_GAME_OVER_SIZE 190
+#define LABEL_GAME_LOGO_SIZE 220
+
+#define GAME_LOGO_OFFSET_PS (.4)
 
 
 Font font = { 0 };
@@ -93,6 +99,11 @@ struct game_ctx {
 	unsigned is_game_over:1;
 	unsigned is_eat:1;
 	unsigned is_was_pressed_before_tick:1;
+	unsigned is_start_screen:1;
+	unsigned is_exit:1;
+	int start_screen_snake_x;
+	int menu_count;
+	int selected_menu;
 };
 
 static void init() {
@@ -101,7 +112,8 @@ static void init() {
 	InitAudioDevice();	    // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
-	font = LoadFontEx("resources/TiltNeon-Regular.ttf", LABEL_GAME_OVER_SIZE, NULL, 0);
+	// font = LoadFontEx("resources/TiltNeon-Regular.ttf", LABEL_GAME_OVER_SIZE + 200, NULL, 0);
+	font = LoadFontEx("resources/m6x11.ttf", LABEL_GAME_OVER_SIZE + 200, NULL, 0);
 	music = LoadMusicStream("resources/ambient.ogg");
 	fxCoin = LoadSound("resources/coin.wav");
 
@@ -132,6 +144,11 @@ static void set_init_values(struct game_ctx* g) {
 	g->is_ticked = 0;
 	g->is_game_over = 0;
 	g->is_was_pressed_before_tick = 0;
+	g->is_start_screen = 1;
+	g->is_exit = 0;
+	g->start_screen_snake_x = -4;
+	g->menu_count = 2;
+	g->selected_menu = 0;
 }
 
 static struct game_ctx* init_game(void) {
@@ -143,8 +160,31 @@ static struct game_ctx* init_game(void) {
 	set_init_values(g);
 	return g;
 }
-
+static void deinit(struct game_ctx* g);
 void handleControl(struct game_ctx *g) {
+	if (g->is_start_screen) {
+		if (IsKeyPressed(KEY_DOWN)) {
+			if (g->selected_menu == g->menu_count - 1) {
+				g->selected_menu = 0;
+			} else {
+				g->selected_menu++;
+			}
+		} else if (IsKeyPressed(KEY_UP)) {
+			if (g->selected_menu == 0) {
+				g->selected_menu = g->menu_count - 1;
+			} else {
+				g->selected_menu--;
+			}
+		} else if (IsKeyPressed(KEY_ENTER)) {
+			if (g->selected_menu == 0) {
+				g->is_start_screen = 0;
+			} else if (g->selected_menu == 1) {
+				g->is_exit = 1;
+			}
+		}
+		return;
+	}
+
 	if (g->is_game_over) {
 		if (IsKeyPressed(KEY_R)) {
 			set_init_values(g);
@@ -252,9 +292,10 @@ static void shrinkSnake(struct game_ctx *g) {
 	}
 }
 
+/*
 static void updateSnake(struct game_ctx *g) {
-
 }
+*/
 
 static Vector2 get_next_eat() {
 	return (struct Vector2){
@@ -291,7 +332,16 @@ static unsigned check_game_over(struct game_ctx *g) {
 	return 0;
 }
 
+static void updateStartScreen(struct game_ctx *g) {
+	g->start_screen_snake_x++;
+}
+
 static void UpdateFrame(struct game_ctx *g) {
+	if (g->is_start_screen) {
+		updateStartScreen(g);
+		return;
+	}
+
 	g->is_game_over = check_game_over(g);
 	if (g->is_game_over) {
 		return;
@@ -341,11 +391,71 @@ static void drawScore(struct game_ctx *g) {
 	DrawText(TextFormat("%d", g->score), 190, 40, 40, RED);
 }
 
-static void drawGameOver(struct game_ctx *g) {
-	const char label[10] = "GAME OVER";
-	Vector2 label_sz = MeasureTextEx(font, &label, LABEL_GAME_OVER_SIZE, 0);
+static void drawGameOver(void) {
+	const char *label = "GAME OVER";
+	int spacer = 9;
+	Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE, spacer);
+	Vector2 label_sz2 = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE + 20, 0);
 	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = (SCREEN_HEIGHT - label_sz.y)/2};
-	DrawTextEx(font, &label, label_pos, LABEL_GAME_OVER_SIZE, 0, DARKGRAY);
+	Vector2 label_pos2 = {.x = (SCREEN_WIDTH - label_sz2.x)/2, .y = (SCREEN_HEIGHT - label_sz2.y)/2};
+	DrawTextEx(font, label, label_pos2, LABEL_GAME_OVER_SIZE + 20, 0, RED);
+	DrawTextEx(font, label, label_pos, LABEL_GAME_OVER_SIZE, spacer, DARKGRAY);
+}
+static void drawGameLogo(void) {
+	const char* label = "SnaKe HiKe Game";
+
+	int game_logo_boundary_h = SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS;
+	Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_LOGO_SIZE, 0);
+	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = (game_logo_boundary_h - label_sz.y)/2};
+	DrawTextEx(font, label, label_pos, LABEL_GAME_LOGO_SIZE, 0, RED);
+	// DrawRectangleLines(0, (game_logo_boundary_h - label_sz.y)/2, SCREEN_WIDTH, label_sz.y, RED);
+}
+
+static void drawGameMenu(struct game_ctx *g) {
+	const char* labels[] = {"Start", "Exit"};
+	int lb_count = countof(labels);
+	int menu_div_space = 250;
+	Vector2 menu_label_sz = MeasureTextEx(font, "lol", LABEL_GAME_OVER_SIZE, 9); // need for height
+	assert (lb_count > 0);
+	int game_logo_boundary_h = SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS;
+	int game_menu_boundary_h = SCREEN_HEIGHT - game_logo_boundary_h;
+	int total_menu_height = (lb_count - 1) * menu_div_space + lb_count * menu_label_sz.y;
+	int menu_start_y = game_logo_boundary_h + (game_menu_boundary_h - total_menu_height) / 2;
+	for (int i = 0; i < lb_count; i++) {
+		const char* label = labels[i];
+		Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE, 9);
+		// DrawRectangleLines(0, menu_start_y + label_sz.y/2 + menu_div_space * i, SCREEN_WIDTH, label_sz.y, RED);
+		Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = label_sz.y/2 + menu_start_y + menu_div_space * i};
+		DrawTextEx(font, label, label_pos, LABEL_GAME_OVER_SIZE, 0, DARKGRAY);
+
+		// selected menu item
+		if (g->selected_menu == i) {
+			int label_div_space = 40;
+			DrawRectangle((SCREEN_WIDTH - label_sz.x)/2 - label_div_space,  label_sz.y + menu_start_y + menu_div_space * i - EAT_PX_SZ/2, EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
+		}
+	}
+}
+
+static void drawGameMenuSnake(struct game_ctx *g) {
+	//DrawRectangleLines(0,0,SCREEN_WIDTH,  SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, RED);
+	//DrawRectangleLines(0,SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, SCREEN_WIDTH, SCREEN_HEIGHT * (1 - GAME_LOGO_OFFSET_PS), RED);
+	int snake_x = g->start_screen_snake_x;
+	int snake_y = SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS;
+	int chanks = 5;
+	for (int i = 0; i < chanks; i++) {
+		Color chank_c = SNAKE_BODY_COLOR;
+		if (i == 0) {
+			chank_c = SNAKE_HEAD_COLOR;
+		}
+		DrawRectangle((snake_x - i) * GRID_PX, snake_y - GRID_PX/2, GRID_PX, GRID_PX, chank_c);
+	}
+
+}
+
+static void drawStart(struct game_ctx *g) {
+	drawGameLogo();
+	drawGameMenu(g);
+	drawGameMenuSnake(g);
 }
 
 static void DrawFrame(struct game_ctx *g) {
@@ -354,13 +464,18 @@ static void DrawFrame(struct game_ctx *g) {
 	ClearBackground(RAYWHITE);
 	//DrawLogoScreen();
 	//DrawFPS(10, 10);
-	drawSnake(g);
 	drawGrid();
+	if (g->is_start_screen) {
+		drawStart(g);
+		EndDrawing();
+		return;
+	}
+	drawSnake(g);
 	drawEat(g);
 	drawScore(g);
 	if (g->is_game_over) {
 		//TraceLog(LOG_WARNING, "is_game_over", GRID_W_COUNT, GRID_H_COUNT);
-		drawGameOver(g);
+		drawGameOver();
 	}
 
 	EndDrawing();
@@ -391,7 +506,7 @@ int main(void) {
 	struct game_ctx *g = init_game();
 
 	// Main game loop
-	while (!WindowShouldClose()) {
+	while (!WindowShouldClose() && !g->is_exit) {
 		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
 		tick(g);
 		handleControl(g);
