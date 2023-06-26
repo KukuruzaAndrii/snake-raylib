@@ -15,6 +15,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "raylib.h"
 #include "screen_logo.h"
@@ -42,6 +43,11 @@
 
 #define X(_x) (_x + SCREEN_W_OFFSET)
 #define Y(_y) (_y + SCREEN_H_OFFSET)
+
+
+#define XX(_x) (_x + g->level_start_x)
+#define XY(_y) (_y + g->level_start_y)
+
 
 #define EAT_COLOR MAGENTA
 
@@ -85,15 +91,34 @@ enum dir {
 #define IS_DIR_HOR(_dir) ((_dir) == DIR_LEFT || (_dir) == DIR_RIGHT)
 #define IS_DIR_VER(_dir) ((_dir) == DIR_UP || (_dir) == DIR_DOWN)
 
+enum eat_state {
+	EAT_NO_EAT = 0,
+	EAT_LIVE,
+};
+
 struct eat {
+	int x;
+	int y;
+	enum eat_state st;
+};
+
+struct next_level_portal {
 	int x;
 	int y;
 };
 
+struct level {
+	int w_tile_count;
+	int h_tile_count;
+	int eat_count;
+	struct eat eats[10];
+	struct next_level_portal nl_portal;
+};
+
+
 struct game_ctx {
 	struct node * head;
 	enum dir dir;
-	struct eat eat;
 	int score;
 	unsigned is_ticked:1;
 	unsigned is_game_over:1;
@@ -104,10 +129,20 @@ struct game_ctx {
 	int start_screen_snake_x;
 	int menu_count;
 	int selected_menu;
+	struct level levels[3];
+	int curr_level;
+	int already_eat_count;
+	unsigned is_open_next_level_portal:1;
+	unsigned is_warping_to_next_level:1;
+
+	int level_start_x;
+	int level_start_y;
 };
 
+
+
 static void init() {
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib game template");
+	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Snake hike game");
 	ToggleFullscreen();
 	InitAudioDevice();	    // Initialize audio device
 
@@ -121,25 +156,41 @@ static void init() {
 	PlayMusicStream(music);
 }
 
+static void init_levels(struct game_ctx* g) {
+	struct level levels[3] = {
+		{
+			.w_tile_count = 15, .h_tile_count = 10, .eat_count = 4,
+			.eats = {
+				{2, 2, EAT_LIVE},
+				{3, 3, EAT_LIVE},
+				{4, 4, EAT_LIVE},
+				{5, 5, EAT_LIVE},
+			},
+			.nl_portal = {14, 9}
+		},
+		{.w_tile_count = 5, .h_tile_count = 7, .eat_count = 5},
+		{.w_tile_count = 5, .h_tile_count = 7, .eat_count = 5},
+	};
+	memcpy(g->levels, levels, sizeof(g->levels));
+}
 
 static void set_init_values(struct game_ctx* g) {
 	// free previous memory in case of restart
-	for(struct node *n = g->head->next, *temp; n != NULL;) {
+	for (struct node *n = g->head->next, *temp; n != NULL;) {
 		temp = n->next;
 		TraceLog(LOG_WARNING, "%p", n);
 		free(n);
 		n = temp;
 	}
 
-	g->head->x = 10;
-	g->head->y = 10;
+	g->head->x = 2;
+	g->head->y = 0;
 	g->head->next = NULL;
 
-	addNode(addNode(g->head, 9, 10), 8, 10);
+	addNode(addNode(g->head, 1, 0), 0, 0);
 
 	g->dir = DIR_RIGHT;
 
-	g->eat = (struct eat){.x = 20, .y = 15};
 	g->score = 0;
 	g->is_ticked = 0;
 	g->is_game_over = 0;
@@ -149,6 +200,14 @@ static void set_init_values(struct game_ctx* g) {
 	g->start_screen_snake_x = -4;
 	g->menu_count = 2;
 	g->selected_menu = 0;
+
+	init_levels(g);
+	g->curr_level = 0;
+	g->already_eat_count = 0;
+	g->is_open_next_level_portal = 0;
+	g->is_warping_to_next_level = 0;
+	g->level_start_x = 0;
+	g->level_start_y = 0;
 }
 
 static struct game_ctx* init_game(void) {
@@ -187,12 +246,20 @@ void handleControl(struct game_ctx *g) {
 
 	if (g->is_game_over) {
 		if (IsKeyPressed(KEY_R)) {
+			int curr_level = g->curr_level;
 			set_init_values(g);
+			g->is_start_screen = 0;
+			g->curr_level = curr_level;
 		}
 		return;
 	}
 
 	if (g->is_was_pressed_before_tick) {
+		return;
+	}
+
+
+	if (g->is_warping_to_next_level) {
 		return;
 	}
 
@@ -292,10 +359,15 @@ static void shrinkSnake(struct game_ctx *g) {
 	}
 }
 
+static void remove_head(struct game_ctx *g) {
+	if (g->head->next) {
+		g->head = g->head->next;
+	}
+}
+
 /*
 static void updateSnake(struct game_ctx *g) {
 }
-*/
 
 static Vector2 get_next_eat() {
 	return (struct Vector2){
@@ -303,25 +375,37 @@ static Vector2 get_next_eat() {
 		.y = GetRandomValue(0, H_TILE_LAST_NUM),
 	};
 }
+*/
 
 static unsigned checkEat(struct game_ctx *g) {
-	if (g->head->x == g->eat.x && g->head->y == g->eat.y) {
-		struct Vector2 next_eat_pos = get_next_eat();
-		while (isContainsNodeByVal(g->head, next_eat_pos.x, next_eat_pos.y)) {
-			next_eat_pos = get_next_eat();
+	struct level* l = &(g->levels[g->curr_level]);
+	for (int i = 0; i < l->eat_count; i++) {
+		struct eat *eat = &(l->eats[i]);
+		if (eat->st != EAT_LIVE) {
+			continue;
 		}
-		g->eat.x = next_eat_pos.x;
-		g->eat.y = next_eat_pos.y;
-		g->score += 1;
-		return 1;
+		if (g->head->x == eat->x && g->head->y == eat->y) {
+			//struct Vector2 next_eat_pos = get_next_eat();
+			//while (isContainsNodeByVal(g->head, next_eat_pos.x, next_eat_pos.y)) {
+			//	next_eat_pos = get_next_eat();
+			//}
+			//g->eat.x = next_eat_pos.x;
+			//g->eat.y = next_eat_pos.y;
+			eat->st = EAT_NO_EAT;
+			g->score += 1;
+			g->already_eat_count += 1;
+			return 1;
+		}
 	}
 	return 0;
 }
 
 static unsigned check_game_over(struct game_ctx *g) {
 	struct Vector2 next_head_pos = get_next_head_pos(g->head, g->dir);
-	// wall
-	if (next_head_pos.x == W_TILE_COUNT || next_head_pos.y == H_TILE_COUNT || next_head_pos.x < 0 || next_head_pos.y < 0) {
+	struct level l = g->levels[g->curr_level];
+
+	// level borders
+	if (next_head_pos.x == l.w_tile_count || next_head_pos.y == l.h_tile_count || next_head_pos.x < 0 || next_head_pos.y < 0) {
 		return 1;
 	}
 	// self-eat
@@ -353,9 +437,22 @@ static void UpdateFrame(struct game_ctx *g) {
 	if (!g->is_eat) {
 		shrinkSnake(g);
 	}
+	if (g->already_eat_count == g->levels[g->curr_level].eat_count) {
+		g->is_open_next_level_portal = 1;
+	}
+	if (g->is_open_next_level_portal) {
+		if (g->head->x == g->levels[g->curr_level].nl_portal.x &&
+		    g->head->y == g->levels[g->curr_level].nl_portal.y) {
+			g->is_warping_to_next_level = 1;
+		}
+	}
+
+	if (g->is_warping_to_next_level) {
+		remove_head(g);
+	}
 }
 
-static void drawGrid(void) {
+static void drawGridFullScreen(void) {
 	for (int i = 0; i < GRID_W_LINE_COUNT; i++) {
 		DrawLine(X(i * GRID_PX), Y(0), X(i * GRID_PX), Y(H_TILE_COUNT * GRID_PX), LIGHTGRAY);
 	}
@@ -374,16 +471,26 @@ static void drawSnake(struct game_ctx *g) {
 		body_c = SNAKE_GAME_OVER_COLOR;
 		head_c = SNAKE_GAME_OVER_COLOR;
 	}
+	if (g->is_warping_to_next_level) {
+		head_c = SNAKE_BODY_COLOR;
+	}
 
-	DrawRectangle(X(g->head->x * GRID_PX), Y(g->head->y * GRID_PX), GRID_PX, GRID_PX, head_c);
+	DrawRectangle(XX(g->head->x * GRID_PX), XY(g->head->y * GRID_PX), GRID_PX, GRID_PX, head_c);
 	foreach_node(g->head->next, n) {
 		// TraceLog(LOG_WARNING, "x=%d y=%d", n->x, n->y);
-		DrawRectangle(X(n->x * GRID_PX), Y(n->y * GRID_PX), GRID_PX, GRID_PX, body_c);
+		DrawRectangle(XX(n->x * GRID_PX), XY(n->y * GRID_PX), GRID_PX, GRID_PX, body_c);
 	}
 }
 
 static void drawEat(struct game_ctx *g) {
-	DrawRectangle(X(g->eat.x * GRID_PX + EAT_PX_SZ/2), Y(g->eat.y * GRID_PX + EAT_PX_SZ/2), EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
+	struct level l = g->levels[g->curr_level];
+	for (int i = 0; i < l.eat_count; i++) {
+		struct eat eat = l.eats[i];
+		if (eat.st != EAT_LIVE) {
+			continue;
+		}
+		DrawRectangle(XX(eat.x * GRID_PX + EAT_PX_SZ/2), XY(eat.y * GRID_PX + EAT_PX_SZ/2), EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
+	}
 }
 
 static void drawScore(struct game_ctx *g) {
@@ -458,18 +565,48 @@ static void drawStart(struct game_ctx *g) {
 	drawGameMenuSnake(g);
 }
 
+static void draw_level_grid(struct level l, int x_ofs, int y_ofs) {
+	for (int i = 0; i < l.w_tile_count + 1; i++) {
+		DrawLine(i * GRID_PX + x_ofs, 0 + y_ofs, i * GRID_PX + x_ofs, l.h_tile_count * GRID_PX + y_ofs, LIGHTGRAY);
+	}
+	for (int i = 0; i < l.h_tile_count + 1; i++) {
+		DrawLine(0 + x_ofs, i * GRID_PX + y_ofs, l.w_tile_count * GRID_PX + x_ofs, i * GRID_PX + y_ofs, LIGHTGRAY);
+	}
+}
+
+static void draw_next_level_portal(struct game_ctx *g) {
+	struct next_level_portal nl_portal =  g->levels[g->curr_level].nl_portal;
+	DrawRectangle(XX(nl_portal.x * GRID_PX), XY(nl_portal.y * GRID_PX), GRID_PX, GRID_PX, GREEN);
+}
+
+static void draw_level(struct game_ctx *g) {
+	struct level l = g->levels[g->curr_level];
+	int level_w = l.w_tile_count * GRID_PX;
+	int level_h = l.h_tile_count * GRID_PX;
+
+	g->level_start_x = (SCREEN_WIDTH - level_w)/2;
+	g->level_start_y = (SCREEN_HEIGHT - level_h)/2;
+
+	draw_level_grid(l, g->level_start_x, g->level_start_y);
+
+	if (g->is_open_next_level_portal) {
+		draw_next_level_portal(g);
+	}
+}
+
 static void DrawFrame(struct game_ctx *g) {
 	BeginDrawing();
 
 	ClearBackground(RAYWHITE);
 	//DrawLogoScreen();
 	//DrawFPS(10, 10);
-	drawGrid();
 	if (g->is_start_screen) {
+		drawGridFullScreen();
 		drawStart(g);
 		EndDrawing();
 		return;
 	}
+	draw_level(g);
 	drawSnake(g);
 	drawEat(g);
 	drawScore(g);
