@@ -18,7 +18,6 @@
 #include <string.h>
 
 #include "raylib.h"
-#include "screen_logo.h"
 
 #define countof(_a) ((sizeof _a)/(sizeof _a[0]))
 
