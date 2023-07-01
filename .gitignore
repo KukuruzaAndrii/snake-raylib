@@ -66,3 +66,6 @@ compile_commands.json
 # Build folder
 [Bb]uild
 bin
+
+#IDE
+.idea/
