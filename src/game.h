@@ -54,6 +54,13 @@ struct level {
 	struct next_level_portal nl_portal;
 };
 
+//move to screen.h
+enum screen_type {
+	SCREEN_EXIT = -1,
+	SCREEN_START = 0,
+	SCREEN_GAME,
+	SCREEN_COUNT
+};
 
 struct game_ctx {
 	struct node * head;

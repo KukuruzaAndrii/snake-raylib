@@ -3,6 +3,7 @@
 
 #include "game.h"
 #include "init.h"
+#include "screen_table.h"
 
 static struct node * addNode(struct node *head, int x, int y) {
 	struct node *n = (struct node *)malloc(sizeof(struct node));
@@ -54,7 +55,7 @@ static void set_init_values(struct game_ctx* g) {
 	g->is_game_over = 0;
 	g->is_was_pressed_before_tick = 0;
 	g->cur_screen = SCREEN_START;
-	g->screen = screens + g->cur_screen;
+	g->screen = get_screen(g->cur_screen);
 
 	init_levels(g);
 	g->curr_level = 0;

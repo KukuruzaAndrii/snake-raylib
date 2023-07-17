@@ -40,7 +40,6 @@ struct screen start_screen = {
 };
 
 static void start_screen_init(union screen_ctx *ctx) {
-	screens[SCREEN_START] = start_screen;
 	struct start_screen_ctx *c = ctx->sc_ctx;
 	c->start_screen_snake_x = -4;
 	c->start_screen_snake_y = 0;
