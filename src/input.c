@@ -7,8 +7,6 @@
 
 #include "input.h"
 
-#define IS_DIR_HOR(_dir) ((_dir) == DIR_LEFT || (_dir) == DIR_RIGHT)
-#define IS_DIR_VER(_dir) ((_dir) == DIR_UP || (_dir) == DIR_DOWN)
 
 void handleControl(struct game_ctx *g) {
 	if (g->is_start_screen) {

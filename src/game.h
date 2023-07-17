@@ -1,6 +1,11 @@
 #pragma once
 
 #include <stddef.h>
+#include <assert.h>
+
+#include "raylib.h"
+
+#define countof(_a) ((sizeof _a)/(sizeof _a[0]))
 
 #define foreach_node(_head, _n) for(struct node *_n = _head; _n != NULL; _n = _n->next)
 
@@ -10,14 +15,15 @@ struct node {
 	struct node *next;
 };
 
+#define IS_DIR_HOR(_dir) ((_dir) == DIR_LEFT || (_dir) == DIR_RIGHT)
+#define IS_DIR_VER(_dir) ((_dir) == DIR_UP || (_dir) == DIR_DOWN)
+
 enum dir {
 	DIR_UP = 0,
 	DIR_RIGHT,
 	DIR_DOWN,
 	DIR_LEFT,
 };
-
-
 
 enum eat_state {
 	EAT_NO_EAT = 0,
@@ -43,6 +49,7 @@ struct level {
 	struct next_level_portal nl_portal;
 };
 
+
 struct game_ctx {
 	struct node * head;
 	enum dir dir;
@@ -51,11 +58,12 @@ struct game_ctx {
 	unsigned is_game_over:1;
 	unsigned is_eat:1;
 	unsigned is_was_pressed_before_tick:1;
-	unsigned is_start_screen:1;
 	unsigned is_exit:1;
-	int start_screen_snake_x;
-	int menu_count;
-	int selected_menu;
+
+	unsigned is_start_screen:1;
+	
+
+
 	struct level levels[3];
 	int curr_level;
 	int already_eat_count;

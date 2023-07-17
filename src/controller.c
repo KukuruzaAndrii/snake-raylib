@@ -113,15 +113,15 @@ static unsigned check_game_over(struct game_ctx *g) {
 	return 0;
 }
 
-static void updateStartScreen(struct game_ctx *g) {
-	g->start_screen_snake_x++;
-}
+
+
+
 
 void UpdateFrame(struct game_ctx *g) {
-	if (g->is_start_screen) {
-		updateStartScreen(g);
-		return;
-	}
+	/* if (g->is_start_screen) { */
+	/* 	updateStartScreen(g); */
+	/* 	return; */
+	/* } */
 
 	g->is_game_over = check_game_over(g);
 	if (g->is_game_over) {

@@ -53,11 +53,9 @@ static void set_init_values(struct game_ctx* g) {
 	g->is_ticked = 0;
 	g->is_game_over = 0;
 	g->is_was_pressed_before_tick = 0;
-	g->is_start_screen = 1;
 	g->is_exit = 0;
-	g->start_screen_snake_x = -4;
-	g->menu_count = 2;
-	g->selected_menu = 0;
+
+	g->is_start_screen = 1;
 
 	init_levels(g);
 	g->curr_level = 0;
@@ -89,3 +87,4 @@ void reset_level(struct game_ctx* g) {
 	g->is_start_screen = 0;
 	g->curr_level = curr_level;
 }
+ 
