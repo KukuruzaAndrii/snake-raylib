@@ -9,7 +9,6 @@
 
 
 #include <stdlib.h>
-#include <assert.h>
 
 #include "raylib.h"
 
@@ -18,20 +17,9 @@
 #include "controller.h"
 #include "draw.h"
 #include "input.h"
+#include "resource.h"
+#include "screen.h"
 
-
-#define countof(_a) ((sizeof _a)/(sizeof _a[0]))
-
-// GRID_SIZE
-#define SCREEN_WIDTH  1920
-#define SCREEN_HEIGHT 1080
-
-#define X(_x) (_x + SCREEN_W_OFFSET)
-#define Y(_y) (_y + SCREEN_H_OFFSET)
-
-#define LABEL_GAME_OVER_SIZE 190
-
-Font font = { 0 };
 Music music = { 0 };
 Sound fxCoin = { 0 };
 
@@ -42,10 +30,7 @@ static void init() {
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Snake hike game");
 	ToggleFullscreen();
 	InitAudioDevice();	    // Initialize audio device
-
-	// Load global data (assets that must be available in all screens, i.e. font)
-	// font = LoadFontEx("resources/TiltNeon-Regular.ttf", LABEL_GAME_OVER_SIZE + 200, NULL, 0);
-	font = LoadFontEx("resources/m6x11.ttf", LABEL_GAME_OVER_SIZE + 200, NULL, 0);
+	init_resources();
 	music = LoadMusicStream("resources/ambient.ogg");
 	fxCoin = LoadSound("resources/coin.wav");
 
@@ -73,7 +58,7 @@ static void deinit(struct game_ctx *g) {
 	free(g);
 
 	// Unload global data loaded
-	UnloadFont(font);
+	deinit_resources();
 	UnloadMusicStream(music);
 	UnloadSound(fxCoin);
 
@@ -90,14 +75,14 @@ int main(void) {
 	struct game_ctx *g = init_game();
 
 	// Main game loop
-	while (!WindowShouldClose() && !g->is_exit) {
-		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screens
+	while (!WindowShouldClose() && g->cur_screen != SCREEN_EXIT) {
+		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screen_type
 		tick(g);
 		handleControl(g);
 		if (g->is_ticked) {
 			UpdateFrame(g);
 		}
-		DrawFrame(g, &font);
+		DrawFrame(g);
 	}
 
 	deinit(g);

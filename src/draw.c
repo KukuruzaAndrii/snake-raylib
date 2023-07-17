@@ -1,10 +1,6 @@
-#include <assert.h>
-
-#include "raylib.h"
-
 #include "game.h"
-
 #include "draw.h"
+#include "resource.h"
 
 #define W_TILE_LAST_NUM (W_TILE_COUNT - 1)
 #define H_TILE_LAST_NUM (H_TILE_COUNT - 1)
@@ -18,10 +14,6 @@
 
 #define SNAKE_GAME_OVER_COLOR RED
 #define SNAKE_EAT_COLOR MAGENTA
-
-#define LABEL_GAME_OVER_SIZE 190
-
-static Font font = { 0 };
 
 static void drawSnake(struct game_ctx *g) {
 	Color head_c = SNAKE_HEAD_COLOR;
@@ -100,17 +92,12 @@ static void draw_level(struct game_ctx *g) {
 	}
 }
 
-void DrawFrame(struct game_ctx *g, Font *_font) {
-	font = *_font;
+void DrawFrame(struct game_ctx *g) {
 	BeginDrawing();
 
 	ClearBackground(BLACK);
 	//DrawLogoScreen();
 	//DrawFPS(10, 10);
-	if (g->is_start_screen) {
-		//		EndDrawing();
-		//return;
-	}
 	draw_level(g);
 	drawSnake(g);
 	drawEat(g);

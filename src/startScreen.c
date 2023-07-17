@@ -2,6 +2,7 @@
 
 #include "screen.h"
 #include "draw.h"
+#include "resource.h"
 
 #define W_TILE_COUNT (SCREEN_WIDTH/GRID_PX)
 #define H_TILE_COUNT (SCREEN_HEIGHT/GRID_PX)
@@ -17,9 +18,7 @@
 
 #define GAME_LOGO_OFFSET_PS (.4)
 
-#define LABEL_GAME_OVER_SIZE 190
 #define LABEL_GAME_LOGO_SIZE 220
-
 
 //todo delete
 #define SNAKE_BODY_COLOR SKYBLUE
@@ -29,16 +28,19 @@
 enum dir st_sc_sequence[] = {DIR_RIGHT, DIR_UP, DIR_RIGHT, DIR_DOWN};
 
 static void start_screen_init(union screen_ctx *ctx);
+static enum screen_type start_screen_handle_input(union screen_ctx *ctx);
 static void start_screen_update(union screen_ctx *ctx);
 static void start_screen_draw(union screen_ctx *ctx);
 
 struct screen start_screen = {
 	.init = start_screen_init,
+	.handle_input = start_screen_handle_input,
 	.update = start_screen_update,
 	.draw = start_screen_draw,
 };
 
 static void start_screen_init(union screen_ctx *ctx) {
+	screens[SCREEN_START] = start_screen;
 	struct start_screen_ctx *c = ctx->sc_ctx;
 	c->start_screen_snake_x = -4;
 	c->start_screen_snake_y = 0;
@@ -53,7 +55,7 @@ static void start_screen_update(union screen_ctx *ctx) {
 	if (c->st_sc_cntr == ST_SC_SNAKE_MOVE_SZ) {
 		c->st_sc_state_cur++;
 	}
-	
+
 	enum dir dir = st_sc_sequence[c->st_sc_state_cur];
 	if (dir == DIR_RIGHT) {
 		c->start_screen_snake_x++;
@@ -64,6 +66,30 @@ static void start_screen_update(union screen_ctx *ctx) {
 	}
 
 	c->st_sc_cntr++;
+}
+
+static enum screen_type start_screen_handle_input(union screen_ctx *ctx) {
+	struct start_screen_ctx *c = ctx->sc_ctx;
+	if (IsKeyPressed(KEY_DOWN)) {
+		if (c->selected_menu == c->menu_count - 1) {
+			c->selected_menu = 0;
+		} else {
+			c->selected_menu++;
+		}
+	} else if (IsKeyPressed(KEY_UP)) {
+		if (c->selected_menu == 0) {
+			c->selected_menu = c->menu_count - 1;
+		} else {
+			c->selected_menu--;
+		}
+	} else if (IsKeyPressed(KEY_ENTER)) {
+		if (c->selected_menu == 0) {
+			return SCREEN_GAME;
+		} else if (c->selected_menu == 1) {
+			return SCREEN_EXIT;
+		}
+	}
+	return SCREEN_START;
 }
 
 static void drawGridFullScreen(void) {
@@ -80,12 +106,12 @@ static void drawGameLogo(void) {
 
 	int game_logo_boundary_h = SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS;
 	Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_LOGO_SIZE, 0);
-	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = (game_logo_boundary_h - label_sz.y)/2};
+	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x) / 2, .y = (game_logo_boundary_h - label_sz.y) / 2};
 	DrawTextEx(font, label, label_pos, LABEL_GAME_LOGO_SIZE, 0, RED);
 	// DrawRectangleLines(0, (game_logo_boundary_h - label_sz.y)/2, SCREEN_WIDTH, label_sz.y, RED);
 }
 
-static void drawGameMenu(struct game_ctx *g) {
+static void drawGameMenu(struct start_screen_ctx *c) {
 	const char* labels[] = {"Start", "Exit"};
 	int lb_count = countof(labels);
 	int menu_div_space = 250;
@@ -99,40 +125,45 @@ static void drawGameMenu(struct game_ctx *g) {
 		const char* label = labels[i];
 		Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE, 9);
 		// DrawRectangleLines(0, menu_start_y + label_sz.y/2 + menu_div_space * i, SCREEN_WIDTH, label_sz.y, RED);
-		Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = label_sz.y/2 + menu_start_y + menu_div_space * i};
+		Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x) / 2, .y = label_sz.y / 2 + menu_start_y +
+																		menu_div_space * i};
 		DrawTextEx(font, label, label_pos, LABEL_GAME_OVER_SIZE, 0, DARKGRAY);
 
 		// selected menu item
-		if (g->selected_menu == i) {
+		if (c->selected_menu == i) {
 			int label_div_space = 40;
-			DrawRectangle((SCREEN_WIDTH - label_sz.x)/2 - label_div_space,  label_sz.y + menu_start_y + menu_div_space * i - EAT_PX_SZ/2, EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
+			DrawRectangle((SCREEN_WIDTH - label_sz.x) / 2 - label_div_space,
+						  label_sz.y + menu_start_y + menu_div_space * i - EAT_PX_SZ / 2, EAT_PX_SZ, EAT_PX_SZ,
+						  EAT_COLOR);
 		}
 	}
 }
 
-static void drawGameMenuSnake(struct game_ctx *g) {
+static void drawGameMenuSnake(struct start_screen_ctx *c) {
 	//DrawRectangleLines(0,0,SCREEN_WIDTH,  SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, RED);
 	//DrawRectangleLines(0,SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, SCREEN_WIDTH, SCREEN_HEIGHT * (1 - GAME_LOGO_OFFSET_PS), RED);
-	int snake_x = g->start_screen_snake_x;
-	int snake_y = g->start_screen_snake_y;
+	int snake_x = c->start_screen_snake_x;
+	int snake_y = c->start_screen_snake_y;
 	int chanks = 5;
 	for (int i = 0; i < chanks; i++) {
 		Color chank_c = SNAKE_BODY_COLOR;
 		if (i == 0) {
 			chank_c = SNAKE_HEAD_COLOR;
 		}
-		DrawRectangle((snake_x - i) * GRID_PX, SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS + snake_y * GRID_PX - GRID_PX/2, GRID_PX, GRID_PX, chank_c);
+		DrawRectangle((snake_x - i) * GRID_PX, SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS + snake_y * GRID_PX - GRID_PX / 2,
+					  GRID_PX, GRID_PX, chank_c);
 	}
 
 }
 
-static void drawStart(struct game_ctx *g) {
+static void drawStart(struct start_screen_ctx *c) {
 	drawGameLogo();
-	drawGameMenu(g);
-	drawGameMenuSnake(g);
+	drawGameMenu(c);
+	drawGameMenuSnake(c);
 }
 
 static void start_screen_draw(union screen_ctx *ctx) {
+	struct start_screen_ctx *c = ctx->sc_ctx;
 	drawGridFullScreen();
-	drawStart(g);
+	drawStart(c);
 }
