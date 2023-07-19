@@ -6,6 +6,7 @@ BIN_DIR               := bin
 
 GAME_BIN              := $(BIN_DIR)/$(PROJECT_NAME)
 SRC                   := $(wildcard $(SRC_DIR)/*.c)
+HDRS                  := $(wildcard $(SRC_DIR)/*.h)
 OBJ                   := $(SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 $(info OBJ = $(OBJ))
 
@@ -16,13 +17,17 @@ cmpl: $(GAME_BIN)
 run: cmpl
 	./$(GAME_BIN)
 
+debug: CFLAGS += -g -D_DEBUG
+debug: cmpl
+	gdb ./$(GAME_BIN)
+
 $(BIN_DIR) $(BUILD_DIR):
 	mkdir -p $@
 
 $(GAME_BIN): $(OBJ) | $(BIN_DIR)
 	$(CC) -o $(GAME_BIN)$(EXT) $(OBJ) $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(HDRS) | $(BUILD_DIR)
 	$(CC) -c $< -o $@ $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM)
 
 clean:

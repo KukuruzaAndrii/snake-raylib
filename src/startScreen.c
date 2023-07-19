@@ -40,51 +40,51 @@ struct screen start_screen = {
 };
 
 static void start_screen_init(union screen_ctx *ctx) {
-	struct start_screen_ctx *c = ctx->sc_ctx;
-	c->start_screen_snake_x = -4;
-	c->start_screen_snake_y = 0;
-	c->st_sc_state_cur = 0;
-	c->st_sc_cntr = 0;
-	c->menu_count = 2;
-	c->selected_menu = 0;
+	struct start_screen_ctx __attribute__((unused)) c = ctx->sc_ctx;
+	c.start_screen_snake_x = -4;
+	c.start_screen_snake_y = 0;
+	c.st_sc_state_cur = 0;
+	c.st_sc_cntr = 0;
+	c.menu_count = 2;
+	c.selected_menu = 0;
 }
 
 static void start_screen_update(union screen_ctx *ctx) {
-	struct start_screen_ctx *c = ctx->sc_ctx;
-	if (c->st_sc_cntr == ST_SC_SNAKE_MOVE_SZ) {
-		c->st_sc_state_cur++;
+	struct start_screen_ctx c = ctx->sc_ctx;
+	if (c.st_sc_cntr == ST_SC_SNAKE_MOVE_SZ) {
+		c.st_sc_state_cur++;
 	}
 
-	enum dir dir = st_sc_sequence[c->st_sc_state_cur];
+	enum dir dir = st_sc_sequence[c.st_sc_state_cur];
 	if (dir == DIR_RIGHT) {
-		c->start_screen_snake_x++;
+		c.start_screen_snake_x++;
 	} else if (dir == DIR_UP) {
-		c->start_screen_snake_y++;
+		c.start_screen_snake_y++;
 	} else if (dir == DIR_DOWN) {
-		c->start_screen_snake_y--;
+		c.start_screen_snake_y--;
 	}
 
-	c->st_sc_cntr++;
+	c.st_sc_cntr++;
 }
 
 static enum screen_type start_screen_handle_input(union screen_ctx *ctx) {
-	struct start_screen_ctx *c = ctx->sc_ctx;
+	struct start_screen_ctx c = ctx->sc_ctx;
 	if (IsKeyPressed(KEY_DOWN)) {
-		if (c->selected_menu == c->menu_count - 1) {
-			c->selected_menu = 0;
+		if (c.selected_menu == c.menu_count - 1) {
+			c.selected_menu = 0;
 		} else {
-			c->selected_menu++;
+			c.selected_menu++;
 		}
 	} else if (IsKeyPressed(KEY_UP)) {
-		if (c->selected_menu == 0) {
-			c->selected_menu = c->menu_count - 1;
+		if (c.selected_menu == 0) {
+			c.selected_menu = c.menu_count - 1;
 		} else {
-			c->selected_menu--;
+			c.selected_menu--;
 		}
 	} else if (IsKeyPressed(KEY_ENTER)) {
-		if (c->selected_menu == 0) {
+		if (c.selected_menu == 0) {
 			return SCREEN_GAME;
-		} else if (c->selected_menu == 1) {
+		} else if (c.selected_menu == 1) {
 			return SCREEN_EXIT;
 		}
 	}
@@ -162,7 +162,7 @@ static void drawStart(struct start_screen_ctx *c) {
 }
 
 static void start_screen_draw(union screen_ctx *ctx) {
-	struct start_screen_ctx *c = ctx->sc_ctx;
+	struct start_screen_ctx c = ctx->sc_ctx;
 	drawGridFullScreen();
-	drawStart(c);
+	drawStart(&c);
 }

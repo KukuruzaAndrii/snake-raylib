@@ -12,10 +12,11 @@ struct start_screen_ctx {
 };
 
 union screen_ctx {
-	struct start_screen_ctx *sc_ctx;
+	struct start_screen_ctx sc_ctx;
 };
 
 struct screen {
+	enum screen_type type;
 	void (*init)(union screen_ctx *sc);
 	enum screen_type (*handle_input)(union screen_ctx *sc);
 	void (*update)(union screen_ctx *sc);

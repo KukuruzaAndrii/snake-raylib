@@ -54,8 +54,8 @@ static void set_init_values(struct game_ctx* g) {
 	g->is_ticked = 0;
 	g->is_game_over = 0;
 	g->is_was_pressed_before_tick = 0;
-	g->cur_screen = SCREEN_START;
-	g->screen = get_screen(g->cur_screen);
+	init_screen_table();
+	g->screen = get_screen(SCREEN_START);
 
 	init_levels(g);
 	g->curr_level = 0;

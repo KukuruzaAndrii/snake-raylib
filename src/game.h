@@ -70,7 +70,6 @@ struct game_ctx {
 	unsigned is_game_over:1;
 	unsigned is_eat:1;
 	unsigned is_was_pressed_before_tick:1;
-	enum screen_type cur_screen;
 	struct screen* screen;
 	struct level levels[3];
 	int curr_level;

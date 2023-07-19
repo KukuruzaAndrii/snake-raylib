@@ -19,6 +19,7 @@
 #include "input.h"
 #include "resource.h"
 #include "screen.h"
+#include "screen_table.h"
 
 Music music = { 0 };
 Sound fxCoin = { 0 };
@@ -73,16 +74,28 @@ int main(void) {
 	SetTargetFPS(60);
 
 	struct game_ctx *g = init_game();
-
+	TraceLog(LOG_INFO, "init_game");
+	enum screen_type next_sc_t = g->screen->type;
+	union screen_ctx* sc = &(union screen_ctx){0};
+	g->screen->init(sc);
 	// Main game loop
-	while (!WindowShouldClose() && g->cur_screen != SCREEN_EXIT) {
-		//	UpdateMusicStream(music);	    // NOTE: Music keeps playing between screen_type
+	TraceLog(LOG_INFO, "start main loop");
+	while (!WindowShouldClose() && g->screen->type != SCREEN_EXIT) {
 		tick(g);
-		handleControl(g);
-		if (g->is_ticked) {
-			UpdateFrame(g);
+		next_sc_t = g->screen->handle_input(sc);
+		//handleControl(g);
+		if (next_sc_t != g->screen->type) {
+			TraceLog(LOG_INFO, "new screen %d>>%d", g->screen->type, next_sc_t);
+			struct screen* new_scr = get_screen(next_sc_t);
+			new_scr->init(sc);
+			g->screen = new_scr;
 		}
-		DrawFrame(g);
+		if (g->is_ticked) {
+			g->screen->update(sc);
+			//UpdateFrame(g);
+		}
+		g->screen->draw(sc);
+		//DrawFrame(g);
 	}
 
 	deinit(g);
