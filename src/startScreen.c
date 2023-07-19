@@ -32,6 +32,15 @@ static enum screen_type start_screen_handle_input(union screen_ctx *ctx);
 static void start_screen_update(union screen_ctx *ctx);
 static void start_screen_draw(union screen_ctx *ctx);
 
+struct start_screen_ctx {
+	int start_screen_snake_x;
+	int start_screen_snake_y;
+	int st_sc_state_cur;
+	int st_sc_cntr;
+	int menu_count;
+	int selected_menu;
+};
+
 struct screen start_screen = {
 	.init = start_screen_init,
 	.handle_input = start_screen_handle_input,

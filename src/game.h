@@ -63,21 +63,7 @@ enum screen_type {
 };
 
 struct game_ctx {
-	struct node * head;
-	enum dir dir;
-	int score;
-	unsigned is_ticked:1;
-	unsigned is_game_over:1;
-	unsigned is_eat:1;
-	unsigned is_was_pressed_before_tick:1;
 	struct screen* screen;
-	struct level levels[3];
-	int curr_level;
-	int already_eat_count;
-	unsigned is_open_next_level_portal:1;
-	unsigned is_warping_to_next_level:1;
-
-	int level_start_x;
-	int level_start_y;
+	unsigned is_ticked:1;
 };
 

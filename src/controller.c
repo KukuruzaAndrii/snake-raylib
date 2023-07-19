@@ -118,11 +118,6 @@ static unsigned check_game_over(struct game_ctx *g) {
 
 
 void UpdateFrame(struct game_ctx *g) {
-	/* if (g->is_start_screen) { */
-	/* 	updateStartScreen(g); */
-	/* 	return; */
-	/* } */
-
 	g->is_game_over = check_game_over(g);
 	if (g->is_game_over) {
 		return;

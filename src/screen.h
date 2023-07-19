@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 struct start_screen_ctx {
 	int start_screen_snake_x;
 	int start_screen_snake_y;
@@ -11,8 +9,26 @@ struct start_screen_ctx {
 	int selected_menu;
 };
 
+struct main_screen_ctx {
+	struct node * head;
+	enum dir dir;
+	int score;
+
+	unsigned is_game_over:1;
+	unsigned is_eat:1;
+	unsigned is_was_pressed_before_tick:1;
+	struct level levels[3];
+	int curr_level;
+	int already_eat_count;
+	unsigned is_open_next_level_portal:1;
+	unsigned is_warping_to_next_level:1;
+	int level_start_x;
+	int level_start_y;
+};
+
 union screen_ctx {
 	struct start_screen_ctx sc_ctx;
+	struct main_screen_ctx main_sc;
 };
 
 struct screen {
