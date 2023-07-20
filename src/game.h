@@ -65,5 +65,6 @@ enum screen_type {
 struct game_ctx {
 	struct screen* screen;
 	unsigned is_ticked:1;
+	unsigned is_was_pressed_before_tick:1;
 };
 

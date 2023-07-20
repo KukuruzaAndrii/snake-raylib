@@ -3,6 +3,7 @@
 #include "raylib.h"
 
 #include "game.h"
+#include "screen.h"
 
 
 static unsigned isContainsNodeByVal(struct node *head, int x, int y) {
@@ -37,17 +38,17 @@ static Vector2 get_next_head_pos(struct node* head, enum dir dir) {
 	return v;
 }
 
-static struct node* growSnake(struct game_ctx *g) {
+static struct node* growSnake(struct main_screen_ctx *c) {
 	struct node *n = (struct node *)malloc(sizeof(struct node));
-	struct Vector2 next_head_pos = get_next_head_pos(g->head, g->dir);
+	struct Vector2 next_head_pos = get_next_head_pos(c->head, c->dir);
 	n->x = next_head_pos.x;
 	n->y = next_head_pos.y;
-	n->next = g->head;
+	n->next = c->head;
 	return n;
 }
 
-static void shrinkSnake(struct game_ctx *g) {
-	foreach_node(g->head, n) {
+static void shrinkSnake(struct main_screen_ctx *c) {
+	foreach_node(c->head, n) {
 		if (n->next && n->next->next == NULL) {
 			free(n->next);
 			n->next = NULL;
@@ -56,9 +57,9 @@ static void shrinkSnake(struct game_ctx *g) {
 	}
 }
 
-static void remove_head(struct game_ctx *g) {
-	if (g->head->next) {
-		g->head = g->head->next;
+static void remove_head(struct main_screen_ctx *c) {
+	if (c->head->next) {
+		c->head = c->head->next;
 	}
 }
 
@@ -74,39 +75,39 @@ static Vector2 get_next_eat() {
 }
 */
 
-static unsigned checkEat(struct game_ctx *g) {
-	struct level* l = &(g->levels[g->curr_level]);
+static unsigned checkEat(struct main_screen_ctx *c) {
+	struct level* l = &(c->levels[c->curr_level]);
 	for (int i = 0; i < l->eat_count; i++) {
 		struct eat *eat = &(l->eats[i]);
 		if (eat->st != EAT_LIVE) {
 			continue;
 		}
-		if (g->head->x == eat->x && g->head->y == eat->y) {
+		if (c->head->x == eat->x && c->head->y == eat->y) {
 			//struct Vector2 next_eat_pos = get_next_eat();
-			//while (isContainsNodeByVal(g->head, next_eat_pos.x, next_eat_pos.y)) {
+			//while (isContainsNodeByVal(c->head, next_eat_pos.x, next_eat_pos.y)) {
 			//	next_eat_pos = get_next_eat();
 			//}
-			//g->eat.x = next_eat_pos.x;
-			//g->eat.y = next_eat_pos.y;
+			//c->eat.x = next_eat_pos.x;
+			//c->eat.y = next_eat_pos.y;
 			eat->st = EAT_NO_EAT;
-			g->score += 1;
-			g->already_eat_count += 1;
+			c->score += 1;
+			c->already_eat_count += 1;
 			return 1;
 		}
 	}
 	return 0;
 }
 
-static unsigned check_game_over(struct game_ctx *g) {
-	struct Vector2 next_head_pos = get_next_head_pos(g->head, g->dir);
-	struct level l = g->levels[g->curr_level];
+static unsigned check_game_over(struct main_screen_ctx *c) {
+	struct Vector2 next_head_pos = get_next_head_pos(c->head, c->dir);
+	struct level l = c->levels[c->curr_level];
 
 	// level borders
 	if (next_head_pos.x == l.w_tile_count || next_head_pos.y == l.h_tile_count || next_head_pos.x < 0 || next_head_pos.y < 0) {
 		return 1;
 	}
 	// self-eat
-	if (isContainsNodeByVal(g->head, next_head_pos.x, next_head_pos.y)) {
+	if (isContainsNodeByVal(c->head, next_head_pos.x, next_head_pos.y)) {
 		return 1;
 	}
 
@@ -117,29 +118,30 @@ static unsigned check_game_over(struct game_ctx *g) {
 
 
 
-void UpdateFrame(struct game_ctx *g) {
-	g->is_game_over = check_game_over(g);
-	if (g->is_game_over) {
+void UpdateFrame(union screen_ctx *ctx) {
+	struct main_screen_ctx *c = &(*ctx).main_sc;
+	c->is_game_over = check_game_over(c);
+	if (c->is_game_over) {
 		return;
 	}
 
-	g->head = growSnake(g);
+	c->head = growSnake(c);
 
-	g->is_eat = checkEat(g);
-	if (!g->is_eat) {
-		shrinkSnake(g);
+	c->is_eat = checkEat(c);
+	if (!c->is_eat) {
+		shrinkSnake(c);
 	}
-	if (g->already_eat_count == g->levels[g->curr_level].eat_count) {
-		g->is_open_next_level_portal = 1;
+	if (c->already_eat_count == c->levels[c->curr_level].eat_count) {
+		c->is_open_next_level_portal = 1;
 	}
-	if (g->is_open_next_level_portal) {
-		if (g->head->x == g->levels[g->curr_level].nl_portal.x &&
-		    g->head->y == g->levels[g->curr_level].nl_portal.y) {
-			g->is_warping_to_next_level = 1;
+	if (c->is_open_next_level_portal) {
+		if (c->head->x == c->levels[c->curr_level].nl_portal.x &&
+		    c->head->y == c->levels[c->curr_level].nl_portal.y) {
+			c->is_warping_to_next_level = 1;
 		}
 	}
 
-	if (g->is_warping_to_next_level) {
-		remove_head(g);
+	if (c->is_warping_to_next_level) {
+		remove_head(c);
 	}
 }

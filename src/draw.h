@@ -5,4 +5,4 @@
 #define EAT_PX_SZ (GRID_PX/2)
 #define EAT_COLOR MAGENTA
 
-void DrawFrame(struct game_ctx *g);
+void DrawFrame(struct main_screen_ctx *c);

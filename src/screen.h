@@ -13,10 +13,9 @@ struct main_screen_ctx {
 	struct node * head;
 	enum dir dir;
 	int score;
-
 	unsigned is_game_over:1;
 	unsigned is_eat:1;
-	unsigned is_was_pressed_before_tick:1;
+	
 	struct level levels[3];
 	int curr_level;
 	int already_eat_count;

@@ -6,12 +6,8 @@
 #include "resource.h"
 #include "screen.h"
 
-void voidd (union screen_ctx *ctx) {
-	(void)(ctx);
-}
-
 struct screen game_screen = {
-	.init = voidd,
+	.init = init_main_screen,
 	.handle_input = handleControl,
 	.update = UpdateFrame,
 	.draw = DrawFrame,
