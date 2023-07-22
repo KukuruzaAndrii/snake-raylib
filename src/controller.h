@@ -2,4 +2,4 @@
 
 #include "game.h"
 
-void UpdateFrame(struct game_ctx *g);
+void UpdateFrame(union screen_ctx *ctx);

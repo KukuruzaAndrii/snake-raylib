@@ -1,3 +1,3 @@
 #pragma once
 
-void handleControl(struct game_ctx *g);
+struct input_ret_ctx handleControl(union screen_ctx *sc);

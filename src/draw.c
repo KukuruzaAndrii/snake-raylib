@@ -93,10 +93,9 @@ static void draw_level(struct main_screen_ctx *c) {
 	}
 }
 
-void DrawFrame(struct main_screen_ctx *c) {
-	BeginDrawing();
+void DrawFrame(union screen_ctx *ctx) {
+	struct main_screen_ctx *c = &ctx->main_sc;
 
-	ClearBackground(BLACK);
 	//DrawLogoScreen();
 	//DrawFPS(10, 10);
 	draw_level(c);
@@ -107,7 +106,5 @@ void DrawFrame(struct main_screen_ctx *c) {
 		//TraceLog(LOG_WARNING, "is_game_over", GRID_W_COUNT, GRID_H_COUNT);
 		drawGameOver();
 	}
-
-	EndDrawing();
 }
 

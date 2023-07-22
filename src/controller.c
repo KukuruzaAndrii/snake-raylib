@@ -119,7 +119,7 @@ static unsigned check_game_over(struct main_screen_ctx *c) {
 
 
 void UpdateFrame(union screen_ctx *ctx) {
-	struct main_screen_ctx *c = &(*ctx).main_sc;
+	struct main_screen_ctx *c = &ctx->main_sc;
 	c->is_game_over = check_game_over(c);
 	if (c->is_game_over) {
 		return;

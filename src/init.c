@@ -60,13 +60,13 @@ void reset_level(struct game_ctx* g) {
 }
 */
 void init_main_screen (union screen_ctx *ctx) {
-	struct main_screen_ctx *c = &(*ctx).main_sc;
+	struct main_screen_ctx *c = &ctx->main_sc;
 	struct node *n = (struct node *)malloc(sizeof(struct node));
 	c->head = n;
 	c->head->next = NULL;
 
 		// free previous memory in case of restart
-	for (struct node *n = g->head->next, *temp; n != NULL;) {
+	for (struct node *n = c->head->next, *temp; n != NULL;) {
 		temp = n->next;
 		//TraceLog(LOG_WARNING, "%p", n);
 		free(n);
@@ -82,10 +82,10 @@ void init_main_screen (union screen_ctx *ctx) {
 	c->dir = DIR_RIGHT;
 
 	c->score = 0;
-	c->is_ticked = 0;
-	c->is_game_over = 0;
-	c->is_was_pressed_before_tick = 0;
-	c->screen = get_screen(SCREEN_START);
+	//c->is_ticked = 0;
+	//c->is_game_over = 0;
+	//c->is_was_pressed_before_tick = 0;
+	//c->screen = get_screen(SCREEN_START);
 
 	init_levels(c);
 	c->curr_level = 0;

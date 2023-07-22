@@ -30,11 +30,17 @@ union screen_ctx {
 	struct main_screen_ctx main_sc;
 };
 
+struct input_ret_ctx {
+	enum screen_type new_scr;
+	unsigned is_screen_changed:1;
+	unsigned is_input_processed:1;
+};
+
 struct screen {
 	enum screen_type type;
-	void (*init)(union screen_ctx *sc);
-	enum screen_type (*handle_input)(union screen_ctx *sc);
-	void (*update)(union screen_ctx *sc);
-	void (*draw)(union screen_ctx *sc);
+	void (*init)(union screen_ctx *ctx);
+	struct input_ret_ctx (*handle_input)(union screen_ctx *ctx);
+	void (*update)(union screen_ctx *ctx);
+	void (*draw)(union screen_ctx *ctx);
 };
 
