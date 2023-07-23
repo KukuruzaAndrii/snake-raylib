@@ -3,7 +3,7 @@
 #include "raylib.h"
 
 #include "game.h"
-//#include "init.h"
+#include "init.h"
 
 #include "screen.h"
 #include "input.h"

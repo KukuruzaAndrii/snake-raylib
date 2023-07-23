@@ -1,4 +1,6 @@
 // todo remove
+#include "game.h"
+
 #include "init.h"
 #include "controller.h"
 #include "draw.h"
