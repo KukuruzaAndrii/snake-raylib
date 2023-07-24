@@ -1,8 +1,11 @@
 #pragma once
 
+#include "snake.h"
+
 struct start_screen_ctx {
-	int start_screen_snake_x;
-	int start_screen_snake_y;
+	struct snake sn;
+	//int start_screen_snake_x;
+	//int start_screen_snake_y;
 	int st_sc_state_cur;
 	int st_sc_cntr;
 	int menu_count;
@@ -10,6 +13,7 @@ struct start_screen_ctx {
 };
 
 struct main_screen_ctx {
+	struct snake sn;
 	int score;
 	unsigned is_game_over:1;
 	unsigned is_eat:1;

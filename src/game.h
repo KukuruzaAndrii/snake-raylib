@@ -2,11 +2,15 @@
 
 #include <stddef.h>
 #include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h>
 
 #include "raylib.h"
 
 #define SCREEN_WIDTH  1920
 #define SCREEN_HEIGHT 1080
+
+#define GRID_PX 45
 
 #define LABEL_GAME_OVER_SIZE 190
 
@@ -22,13 +26,6 @@ struct node {
 
 #define IS_DIR_HOR(_dir) ((_dir) == DIR_LEFT || (_dir) == DIR_RIGHT)
 #define IS_DIR_VER(_dir) ((_dir) == DIR_UP || (_dir) == DIR_DOWN)
-
-enum dir {
-	DIR_UP = 0,
-	DIR_RIGHT,
-	DIR_DOWN,
-	DIR_LEFT,
-};
 
 enum eat_state {
 	EAT_NO_EAT = 0,

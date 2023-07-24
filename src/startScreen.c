@@ -3,6 +3,7 @@
 #include "screen.h"
 #include "draw.h"
 #include "resource.h"
+#include "snake.h"
 
 #define W_TILE_COUNT (SCREEN_WIDTH/GRID_PX)
 #define H_TILE_COUNT (SCREEN_HEIGHT/GRID_PX)
@@ -24,7 +25,7 @@
 #define SNAKE_BODY_COLOR SKYBLUE
 #define SNAKE_HEAD_COLOR BLUE
 
-#define ST_SC_SNAKE_MOVE_SZ 4
+
 enum dir st_sc_sequence[] = {DIR_RIGHT, DIR_UP, DIR_RIGHT, DIR_DOWN};
 
 static void start_screen_init(union screen_ctx *ctx);
@@ -41,30 +42,40 @@ struct screen start_screen = {
 
 static void start_screen_init(union screen_ctx *ctx) {
 	struct start_screen_ctx __attribute__((unused)) *c = &ctx->sc_ctx;
-	c->start_screen_snake_x = -4;
-	c->start_screen_snake_y = 0;
+	snake_init(&c->sn, 2, 0, 10);
+	//c->start_screen_snake_x = -4;
+	//c->start_screen_snake_y = 0;
 	c->st_sc_state_cur = 0;
 	c->st_sc_cntr = 0;
 	c->menu_count = 2;
 	c->selected_menu = 0;
 }
 
+#define ST_SC_SNAKE_MOVE_HOR_SZ 4
+#define ST_SC_SNAKE_MOVE_VER_SZ 2
 static void start_screen_update(union screen_ctx *ctx) {
 	struct start_screen_ctx *c = &ctx->sc_ctx;
-	if (c->st_sc_cntr == ST_SC_SNAKE_MOVE_SZ) {
+	struct snake *s = &c->sn;
+	int move_sz;
+	if (IS_DIR_HOR(s->dir)) {
+		move_sz = ST_SC_SNAKE_MOVE_HOR_SZ;
+	} else if (IS_DIR_VER(s->dir)) {
+		move_sz = ST_SC_SNAKE_MOVE_VER_SZ;
+	}
+	TraceLog(LOG_INFO, "move_sz=%d, c->st_sc_cntr=%d,  c->st_sc_cntr%%move_sz=%d", move_sz,c->st_sc_cntr, (c->st_sc_cntr % move_sz));
+	if ((c->st_sc_cntr % move_sz) == 0) {
 		c->st_sc_state_cur++;
+		c->st_sc_state_cur %= countof(st_sc_sequence);
+		enum dir dir = st_sc_sequence[c->st_sc_state_cur];
+		snake_set_dir(s, dir);
+		c->st_sc_cntr = 0;
+	} else {
 	}
-
-	enum dir dir = st_sc_sequence[c->st_sc_state_cur];
-	if (dir == DIR_RIGHT) {
-		c->start_screen_snake_x++;
-	} else if (dir == DIR_UP) {
-		c->start_screen_snake_y++;
-	} else if (dir == DIR_DOWN) {
-		c->start_screen_snake_y--;
-	}
-
 	c->st_sc_cntr++;
+
+	snake_grow(s);
+	snake_shrink(s);
+
 }
 
 static struct input_ret_ctx start_screen_handle_input(union screen_ctx *ctx) {
@@ -146,6 +157,8 @@ static void drawGameMenu(struct start_screen_ctx *c) {
 static void drawGameMenuSnake(struct start_screen_ctx *c) {
 	//DrawRectangleLines(0,0,SCREEN_WIDTH,  SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, RED);
 	//DrawRectangleLines(0,SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, SCREEN_WIDTH, SCREEN_HEIGHT * (1 - GAME_LOGO_OFFSET_PS), RED);
+	snake_draw(&c->sn, 0, SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS - GRID_PX/2);
+	/*
 	int snake_x = c->start_screen_snake_x;
 	int snake_y = c->start_screen_snake_y;
 	int chanks = 5;
@@ -157,6 +170,7 @@ static void drawGameMenuSnake(struct start_screen_ctx *c) {
 		DrawRectangle((snake_x - i) * GRID_PX, SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS + snake_y * GRID_PX - GRID_PX / 2,
 					  GRID_PX, GRID_PX, chank_c);
 	}
+	*/
 
 }
 

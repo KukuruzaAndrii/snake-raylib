@@ -24,27 +24,7 @@ struct input_ret_ctx handleControl(union screen_ctx *ctx) {
 		return ret;
 	}
 
-	if (IsKeyPressed(KEY_UP)) {
-		if (IS_DIR_HOR(c->dir)) {
-			c->dir = DIR_UP;
-			ret.is_input_processed = 1;
-		}
-	} else if (IsKeyPressed(KEY_RIGHT)) {
-		if (IS_DIR_VER(c->dir)) {
-			c->dir = DIR_RIGHT;
-			ret.is_input_processed = 1;
-		}
-	} else if (IsKeyPressed(KEY_DOWN)) {
-		if (IS_DIR_HOR(c->dir)) {
-			c->dir = DIR_DOWN;
-			ret.is_input_processed = 1;
-		}
-	} else if (IsKeyPressed(KEY_LEFT)) {
-		if (IS_DIR_VER(c->dir)) {
-			c->dir = DIR_LEFT;
-			ret.is_input_processed = 1;
-		}
-	}
+	ret.is_input_processed = snake_input_proceed(&c->sn);
 
 	return ret;
 }

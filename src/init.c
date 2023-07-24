@@ -6,14 +6,7 @@
 #include "init.h"
 #include "screen_table.h"
 
-static struct node * addNode(struct node *head, int x, int y) {
-	struct node *n = (struct node *)malloc(sizeof(struct node));
-	n->x = x;
-	n->y = y;
-	n->next = NULL;
-	head->next = n;
-	return n;
-}
+
 
 
 static void init_levels(struct main_screen_ctx *c) {
@@ -59,12 +52,11 @@ void reset_level(struct game_ctx* g) {
 	g->curr_level = curr_level;
 }
 */
+
 void init_main_screen (union screen_ctx *ctx) {
 	struct main_screen_ctx *c = &ctx->main_sc;
-	struct node *n = (struct node *)malloc(sizeof(struct node));
-	c->head = n;
-	c->head->next = NULL;
 
+	/*
 		// free previous memory in case of restart
 	for (struct node *n = c->head->next, *temp; n != NULL;) {
 		temp = n->next;
@@ -72,14 +64,8 @@ void init_main_screen (union screen_ctx *ctx) {
 		free(n);
 		n = temp;
 	}
-
-	c->head->x = 2;
-	c->head->y = 0;
-	c->head->next = NULL;
-
-	addNode(addNode(c->head, 1, 0), 0, 0);
-
-	c->dir = DIR_RIGHT;
+	*/
+	snake_init(&c->sn, 2, 0, 3);
 
 	c->score = 0;
 	//c->is_ticked = 0;

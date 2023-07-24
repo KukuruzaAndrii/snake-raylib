@@ -12,7 +12,7 @@ static unsigned checkEat(struct main_screen_ctx *c) {
 		if (eat->st != EAT_LIVE) {
 			continue;
 		}
-		if (c->head->x == eat->x && c->head->y == eat->y) {
+		if (c->sn.head->x == eat->x && c->sn.head->y == eat->y) {
 			//struct Vector2 next_eat_pos = get_next_eat();
 			//while (isContainsNodeByVal(c->head, next_eat_pos.x, next_eat_pos.y)) {
 			//	next_eat_pos = get_next_eat();
@@ -29,19 +29,12 @@ static unsigned checkEat(struct main_screen_ctx *c) {
 }
 
 static unsigned check_game_over(struct main_screen_ctx *c) {
-	struct Vector2 next_head_pos = get_next_head_pos(c->head, c->dir);
+	struct snake *s = &c->sn;
 	struct level l = c->levels[c->curr_level];
 
-	// level borders
-	if (next_head_pos.x == l.w_tile_count || next_head_pos.y == l.h_tile_count || next_head_pos.x < 0 || next_head_pos.y < 0) {
-		return 1;
-	}
-	// self-eat
-	if (isContainsNodeByVal(c->head, next_head_pos.x, next_head_pos.y)) {
-		return 1;
-	}
+	return snake_check_wall_crush(s, l.w_tile_count, l.h_tile_count) ||
+		snake_check_self_eat(s);
 
-	return 0;
 }
 
 
@@ -50,28 +43,29 @@ static unsigned check_game_over(struct main_screen_ctx *c) {
 
 void UpdateFrame(union screen_ctx *ctx) {
 	struct main_screen_ctx *c = &ctx->main_sc;
+	struct snake *s = &c->sn;
 	c->is_game_over = check_game_over(c);
 	if (c->is_game_over) {
 		return;
 	}
 
-	c->head = growSnake(c);
+	snake_grow(s);
 
 	c->is_eat = checkEat(c);
 	if (!c->is_eat) {
-		shrinkSnake(c);
+		snake_shrink(s);
 	}
 	if (c->already_eat_count == c->levels[c->curr_level].eat_count) {
 		c->is_open_next_level_portal = 1;
 	}
 	if (c->is_open_next_level_portal) {
-		if (c->head->x == c->levels[c->curr_level].nl_portal.x &&
-		    c->head->y == c->levels[c->curr_level].nl_portal.y) {
+		if (s->head->x == c->levels[c->curr_level].nl_portal.x &&
+		    s->head->y == c->levels[c->curr_level].nl_portal.y) {
 			c->is_warping_to_next_level = 1;
 		}
 	}
 
 	if (c->is_warping_to_next_level) {
-		remove_head(c);
+		snake_remove_head(s);
 	}
 }

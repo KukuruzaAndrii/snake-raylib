@@ -10,32 +10,7 @@
 #define XY(_y) (_y + c->level_start_y)
 
 
-#define SNAKE_BODY_COLOR SKYBLUE
-#define SNAKE_HEAD_COLOR BLUE
 
-#define SNAKE_GAME_OVER_COLOR RED
-#define SNAKE_EAT_COLOR MAGENTA
-
-static void drawSnake(struct main_screen_ctx *c) {
-	Color head_c = SNAKE_HEAD_COLOR;
-	Color body_c = SNAKE_BODY_COLOR;
-	if (c->is_eat) {
-		head_c = SNAKE_EAT_COLOR;
-	}
-	if (c->is_game_over) {
-		body_c = SNAKE_GAME_OVER_COLOR;
-		head_c = SNAKE_GAME_OVER_COLOR;
-	}
-	if (c->is_warping_to_next_level) {
-		head_c = SNAKE_BODY_COLOR;
-	}
-
-	DrawRectangle(XX(c->head->x * GRID_PX), XY(c->head->y * GRID_PX), GRID_PX, GRID_PX, head_c);
-	foreach_node(c->head->next, n) {
-		// TraceLog(LOG_WARNING, "x=%d y=%d", n->x, n->y);
-		DrawRectangle(XX(n->x * GRID_PX), XY(n->y * GRID_PX), GRID_PX, GRID_PX, body_c);
-	}
-}
 
 static void drawEat(struct main_screen_ctx *c) {
 	struct level l = c->levels[c->curr_level];
@@ -99,7 +74,7 @@ void DrawFrame(union screen_ctx *ctx) {
 	//DrawLogoScreen();
 	//DrawFPS(10, 10);
 	draw_level(c);
-	drawSnake(c);
+	snake_draw(&c->sn, c->level_start_x, c->level_start_y);
 	drawEat(c);
 	drawScore(c);
 	if (c->is_game_over) {
