@@ -1,7 +1,5 @@
 #include <stdbool.h>
 
-#include "raylib.h"
-
 #include "game.h"
 #include "init.h"
 
@@ -10,7 +8,7 @@
 #define IS_DIR_HOR(_dir) ((_dir) == DIR_LEFT || (_dir) == DIR_RIGHT)
 #define IS_DIR_VER(_dir) ((_dir) == DIR_UP || (_dir) == DIR_DOWN)
 
-void handleControl(struct game_ctx *g) {
+void handleControl(struct game_ctx* g) {
 	if (g->is_start_screen) {
 		if (IsKeyPressed(KEY_DOWN)) {
 			if (g->selected_menu == g->menu_count - 1) {

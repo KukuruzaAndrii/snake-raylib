@@ -6,6 +6,7 @@ BIN_DIR               := bin
 
 GAME_BIN              := $(BIN_DIR)/$(PROJECT_NAME)
 SRC                   := $(wildcard $(SRC_DIR)/*.c)
+HEADERS               := $(wildcard $(SRC_DIR)/*.h)
 OBJ                   := $(SRC:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 $(info OBJ = $(OBJ))
 
@@ -19,15 +20,18 @@ run: cmpl
 $(BIN_DIR) $(BUILD_DIR):
 	mkdir -p $@
 
-$(GAME_BIN): $(OBJ) | $(BIN_DIR)
+$(GAME_BIN): $(OBJ) $(HEADERS) | $(BIN_DIR)
 	$(CC) -o $(GAME_BIN)$(EXT) $(OBJ) $(CFLAGS) $(INCLUDE_PATHS) $(LDFLAGS) $(LDLIBS) -D$(PLATFORM)
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(SRC_DIR)/%.h | $(BUILD_DIR)
 	$(CC) -c $< -o $@ $(CFLAGS) $(INCLUDE_PATHS) -D$(PLATFORM)
 
 clean:
 	rm -rf $(BIN_DIR)
 	rm -rf $(BUILD_DIR)
+
+debug: $(GAME_BIN)
+	gdb $(GAME_BIN)
 
 
 PLATFORM              ?= PLATFORM_DESKTOP
@@ -38,7 +42,7 @@ RAYLIB_LIB_PATH       ?= /usr/local/lib
 RAYLIB_LIBTYPE        ?= STATIC
 
 # Build mode for project: DEBUG or RELEASE
-BUILD_MODE            ?= RELEASE
+BUILD_MODE            ?= DEBUG
 
 # Use Wayland display server protocol on Linux desktop (by default it uses X11 windowing system)
 # NOTE: This variable is only used for PLATFORM_OS: LINUX

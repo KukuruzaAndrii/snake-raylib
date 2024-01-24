@@ -1,24 +1,19 @@
 #include <assert.h>
 
-#include "raylib.h"
-
 #include "game.h"
 
 #include "draw.h"
 
 #define countof(_a) ((sizeof _a)/(sizeof _a[0]))
 
-#define GRID_PX 45
+#define GRID_PX 145
 #define EAT_PX_SZ (GRID_PX/2)
 
-#define SCREEN_WIDTH  1920
-#define SCREEN_HEIGHT 1080
+#define SCREEN_WIDTH  3840 //1920
+#define SCREEN_HEIGHT 2400 //1080
 
 #define W_TILE_COUNT (SCREEN_WIDTH/GRID_PX)
 #define H_TILE_COUNT (SCREEN_HEIGHT/GRID_PX)
-
-#define W_TILE_LAST_NUM (W_TILE_COUNT - 1)
-#define H_TILE_LAST_NUM (H_TILE_COUNT - 1)
 
 #define GRID_W_LINE_COUNT (W_TILE_COUNT + 1)
 #define GRID_H_LINE_COUNT (H_TILE_COUNT + 1)
@@ -47,7 +42,15 @@
 
 #define GAME_LOGO_OFFSET_PS (.4)
 
-static Font font = { 0 };
+static Font font = {0};
+
+
+struct graphic_ctx {
+	unsigned screen_width_px: 16;
+	unsigned screen_height_px: 16;
+	unsigned grid_px: 8;
+
+};
 
 static void drawGridFullScreen(void) {
 	for (int i = 0; i < GRID_W_LINE_COUNT; i++) {
@@ -58,7 +61,7 @@ static void drawGridFullScreen(void) {
 	}
 }
 
-static void drawSnake(struct game_ctx *g) {
+static void drawSnake(struct game_ctx* g) {
 	Color head_c = SNAKE_HEAD_COLOR;
 	Color body_c = SNAKE_BODY_COLOR;
 	if (g->is_eat) {
@@ -79,43 +82,46 @@ static void drawSnake(struct game_ctx *g) {
 	}
 }
 
-static void drawEat(struct game_ctx *g) {
-	struct level l = g->levels[g->curr_level];
-	for (int i = 0; i < l.eat_count; i++) {
-		struct eat eat = l.eats[i];
-		if (eat.st != EAT_LIVE) {
+static void drawEat(struct game_ctx* g) {
+	struct level l = g->curr_level;
+	enum eat_state* eat_states = l.st->eat_states;
+	for (int i = 0; i < l.def->eat_count; i++) {
+		if (eat_states[i] != EAT_LIVE) {
 			continue;
 		}
-		DrawRectangle(XX(eat.x * GRID_PX + EAT_PX_SZ/2), XY(eat.y * GRID_PX + EAT_PX_SZ/2), EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
+		struct eat eat = l.def->eats[i];
+		DrawRectangle(XX(eat.x * GRID_PX + EAT_PX_SZ / 2), XY(eat.y * GRID_PX + EAT_PX_SZ / 2), EAT_PX_SZ, EAT_PX_SZ,
+					  EAT_COLOR);
 	}
 }
 
-static void drawScore(struct game_ctx *g) {
+static void drawScore(struct game_ctx* g) {
 	DrawText("Score:", 40, 40, 40, DARKGRAY);
 	DrawText(TextFormat("%d", g->score), 190, 40, 40, RED);
 }
 
 static void drawGameOver(void) {
-	const char *label = "GAME OVER";
+	const char* label = "GAME OVER";
 	int spacer = 9;
 	Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE, spacer);
 	Vector2 label_sz2 = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE + 20, 0);
-	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = (SCREEN_HEIGHT - label_sz.y)/2};
-	Vector2 label_pos2 = {.x = (SCREEN_WIDTH - label_sz2.x)/2, .y = (SCREEN_HEIGHT - label_sz2.y)/2};
+	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x) / 2, .y = (SCREEN_HEIGHT - label_sz.y) / 2};
+	Vector2 label_pos2 = {.x = (SCREEN_WIDTH - label_sz2.x) / 2, .y = (SCREEN_HEIGHT - label_sz2.y) / 2};
 	DrawTextEx(font, label, label_pos2, LABEL_GAME_OVER_SIZE + 20, 0, RED);
 	DrawTextEx(font, label, label_pos, LABEL_GAME_OVER_SIZE, spacer, DARKGRAY);
 }
+
 static void drawGameLogo(void) {
 	const char* label = "SnaKe HiKe Game";
 
 	int game_logo_boundary_h = SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS;
 	Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_LOGO_SIZE, 0);
-	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = (game_logo_boundary_h - label_sz.y)/2};
+	Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x) / 2, .y = (game_logo_boundary_h - label_sz.y) / 2};
 	DrawTextEx(font, label, label_pos, LABEL_GAME_LOGO_SIZE, 0, RED);
 	// DrawRectangleLines(0, (game_logo_boundary_h - label_sz.y)/2, SCREEN_WIDTH, label_sz.y, RED);
 }
 
-static void drawGameMenu(struct game_ctx *g) {
+static void drawGameMenu(struct game_ctx* g) {
 	const char* labels[] = {"Start", "Exit"};
 	int lb_count = countof(labels);
 	int menu_div_space = 250;
@@ -129,18 +135,21 @@ static void drawGameMenu(struct game_ctx *g) {
 		const char* label = labels[i];
 		Vector2 label_sz = MeasureTextEx(font, label, LABEL_GAME_OVER_SIZE, 9);
 		// DrawRectangleLines(0, menu_start_y + label_sz.y/2 + menu_div_space * i, SCREEN_WIDTH, label_sz.y, RED);
-		Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x)/2, .y = label_sz.y/2 + menu_start_y + menu_div_space * i};
+		Vector2 label_pos = {.x = (SCREEN_WIDTH - label_sz.x) / 2, .y = label_sz.y / 2 + menu_start_y +
+																		menu_div_space * i};
 		DrawTextEx(font, label, label_pos, LABEL_GAME_OVER_SIZE, 0, DARKGRAY);
 
 		// selected menu item
 		if (g->selected_menu == i) {
 			int label_div_space = 40;
-			DrawRectangle((SCREEN_WIDTH - label_sz.x)/2 - label_div_space,  label_sz.y + menu_start_y + menu_div_space * i - EAT_PX_SZ/2, EAT_PX_SZ, EAT_PX_SZ, EAT_COLOR);
+			DrawRectangle((SCREEN_WIDTH - label_sz.x) / 2 - label_div_space,
+						  label_sz.y + menu_start_y + menu_div_space * i - EAT_PX_SZ / 2, EAT_PX_SZ, EAT_PX_SZ,
+						  EAT_COLOR);
 		}
 	}
 }
 
-static void drawGameMenuSnake(struct game_ctx *g) {
+static void drawGameMenuSnake(struct game_ctx* g) {
 	//DrawRectangleLines(0,0,SCREEN_WIDTH,  SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, RED);
 	//DrawRectangleLines(0,SCREEN_HEIGHT * GAME_LOGO_OFFSET_PS, SCREEN_WIDTH, SCREEN_HEIGHT * (1 - GAME_LOGO_OFFSET_PS), RED);
 	int snake_x = g->start_screen_snake_x;
@@ -151,38 +160,38 @@ static void drawGameMenuSnake(struct game_ctx *g) {
 		if (i == 0) {
 			chank_c = SNAKE_HEAD_COLOR;
 		}
-		DrawRectangle((snake_x - i) * GRID_PX, snake_y - GRID_PX/2, GRID_PX, GRID_PX, chank_c);
+		DrawRectangle((snake_x - i) * GRID_PX, snake_y - GRID_PX / 2, GRID_PX, GRID_PX, chank_c);
 	}
 
 }
 
-static void drawStart(struct game_ctx *g) {
+static void drawStart(struct game_ctx* g) {
 	drawGameLogo();
 	drawGameMenu(g);
 	drawGameMenuSnake(g);
 }
 
-static void draw_level_grid(struct level l, int x_ofs, int y_ofs) {
-	for (int i = 0; i < l.w_tile_count + 1; i++) {
-		DrawLine(i * GRID_PX + x_ofs, 0 + y_ofs, i * GRID_PX + x_ofs, l.h_tile_count * GRID_PX + y_ofs, LIGHTGRAY);
+static void draw_level_grid(struct level_def* l, int x_ofs, int y_ofs) {
+	for (int i = 0; i < l->w_tile_count + 1; i++) {
+		DrawLine(i * GRID_PX + x_ofs, 0 + y_ofs, i * GRID_PX + x_ofs, l->h_tile_count * GRID_PX + y_ofs, LIGHTGRAY);
 	}
-	for (int i = 0; i < l.h_tile_count + 1; i++) {
-		DrawLine(0 + x_ofs, i * GRID_PX + y_ofs, l.w_tile_count * GRID_PX + x_ofs, i * GRID_PX + y_ofs, LIGHTGRAY);
+	for (int i = 0; i < l->h_tile_count + 1; i++) {
+		DrawLine(0 + x_ofs, i * GRID_PX + y_ofs, l->w_tile_count * GRID_PX + x_ofs, i * GRID_PX + y_ofs, LIGHTGRAY);
 	}
 }
 
-static void draw_next_level_portal(struct game_ctx *g) {
-	struct next_level_portal nl_portal =  g->levels[g->curr_level].nl_portal;
-	DrawRectangle(XX(nl_portal.x * GRID_PX), XY(nl_portal.y * GRID_PX), GRID_PX, GRID_PX, GREEN);
+static void draw_next_level_portal(struct game_ctx* g) {
+	struct next_level_portal* nl_portal = &g->curr_level.def->nl_portal;
+	DrawRectangle(XX(nl_portal->x * GRID_PX), XY(nl_portal->y * GRID_PX), GRID_PX, GRID_PX, GREEN);
 }
 
-static void draw_level(struct game_ctx *g) {
-	struct level l = g->levels[g->curr_level];
-	int level_w = l.w_tile_count * GRID_PX;
-	int level_h = l.h_tile_count * GRID_PX;
+static void draw_level(struct game_ctx* g) {
+	struct level_def* l = g->curr_level.def;
+	int level_w = l->w_tile_count * GRID_PX;
+	int level_h = l->h_tile_count * GRID_PX;
 
-	g->level_start_x = (SCREEN_WIDTH - level_w)/2;
-	g->level_start_y = (SCREEN_HEIGHT - level_h)/2;
+	g->level_start_x = (SCREEN_WIDTH - level_w) / 2;
+	g->level_start_y = (SCREEN_HEIGHT - level_h) / 2;
 
 	draw_level_grid(l, g->level_start_x, g->level_start_y);
 
@@ -191,7 +200,7 @@ static void draw_level(struct game_ctx *g) {
 	}
 }
 
-void DrawFrame(struct game_ctx *g, Font *_font) {
+void DrawFrame(struct game_ctx* g, Font* _font) {
 	font = *_font;
 	BeginDrawing();
 

@@ -11,8 +11,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "raylib.h"
-
 #include "game.h"
 #include "init.h"
 #include "controller.h"
@@ -20,28 +18,23 @@
 #include "input.h"
 
 
-#define countof(_a) ((sizeof _a)/(sizeof _a[0]))
-
-// GRID_SIZE
-#define SCREEN_WIDTH  1920
-#define SCREEN_HEIGHT 1080
-
 #define X(_x) (_x + SCREEN_W_OFFSET)
 #define Y(_y) (_y + SCREEN_H_OFFSET)
 
 #define LABEL_GAME_OVER_SIZE 190
 
-Font font = { 0 };
-Music music = { 0 };
-Sound fxCoin = { 0 };
+Font font = {0};
+Music music = {0};
+Sound fxCoin = {0};
 
 static int framesCounter = 0;
 static int tickInFrames = 7;
 
 static void init() {
-	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Snake hike game");
+	/* 0 0 - kinda native resolution */
+	InitWindow(0, 0, "Snake hike game");
 	ToggleFullscreen();
-	InitAudioDevice();	    // Initialize audio device
+	InitAudioDevice();        // Initialize audio device
 
 	// Load global data (assets that must be available in all screens, i.e. font)
 	// font = LoadFontEx("resources/TiltNeon-Regular.ttf", LABEL_GAME_OVER_SIZE + 200, NULL, 0);
@@ -53,7 +46,7 @@ static void init() {
 	PlayMusicStream(music);
 }
 
-static void tick(struct game_ctx *g) {
+static void tick(struct game_ctx* g) {
 	framesCounter += 1;
 	if (g->is_ticked) {
 		g->is_ticked = false;
@@ -65,9 +58,9 @@ static void tick(struct game_ctx *g) {
 	}
 }
 
-static void deinit(struct game_ctx *g) {
+static void deinit(struct game_ctx* g) {
 	// for free snake
-	//set_init_values(g);
+	//init_game_values(g);
 
 	free(g->head);
 	free(g);
@@ -77,9 +70,9 @@ static void deinit(struct game_ctx *g) {
 	UnloadMusicStream(music);
 	UnloadSound(fxCoin);
 
-	CloseAudioDevice();	    // Close audio context
+	CloseAudioDevice();        // Close audio context
 
-	CloseWindow();	    // Close window and OpenGL context
+	CloseWindow();        // Close window and OpenGL context
 }
 
 int main(void) {
@@ -87,7 +80,7 @@ int main(void) {
 
 	SetTargetFPS(60);
 
-	struct game_ctx *g = init_game();
+	struct game_ctx* g = init_game();
 
 	// Main game loop
 	while (!WindowShouldClose() && !g->is_exit) {

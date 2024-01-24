@@ -1,3 +1,3 @@
 #include "game.h"
 
-void UpdateFrame(struct game_ctx *g);
+void UpdateFrame(struct game_ctx* g);

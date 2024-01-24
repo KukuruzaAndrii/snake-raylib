@@ -1,11 +1,13 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "game.h"
 #include "init.h"
+#include "levels.h"
 
-static struct node * addNode(struct node *head, int x, int y) {
-	struct node *n = (struct node *)malloc(sizeof(struct node));
+static struct node* addNode(struct node* head, int x, int y) {
+	struct node* n = (struct node*) malloc(sizeof(struct node));
 	n->x = x;
 	n->y = y;
 	n->next = NULL;
@@ -13,79 +15,113 @@ static struct node * addNode(struct node *head, int x, int y) {
 	return n;
 }
 
+static void init_snake(struct node* head, int len, enum dir dir, struct level_def* l) {
+	struct node* node = head;
 
-static void init_levels(struct game_ctx* g) {
-	struct level levels[3] = {
-		{
-			.w_tile_count = 15, .h_tile_count = 10, .eat_count = 4,
-			.eats = {
-				{2, 2, EAT_LIVE},
-				{3, 3, EAT_LIVE},
-				{4, 4, EAT_LIVE},
-				{5, 5, EAT_LIVE},
-			},
-			.nl_portal = {14, 9}
-		},
-		{.w_tile_count = 5, .h_tile_count = 7, .eat_count = 5},
-		{.w_tile_count = 5, .h_tile_count = 7, .eat_count = 5},
-	};
-	memcpy(g->levels, levels, sizeof(g->levels));
+	if (dir == DIR_RIGHT) {
+		/* grow left */
+		assert ((head->x >= len - 1) && (head->x < l->w_tile_count));
+
+		while (len > 0) {
+			node = addNode(node, node->x - 1, node->y);
+			len -= 1;
+		}
+	} else if (dir == DIR_LEFT) {
+		/* grow right */
+		assert ((head->x >= 0) && (head->x + len < l->w_tile_count));
+
+		while (len > 0) {
+			node = addNode(node, node->x + 1, node->y);
+			len -= 1;
+		}
+	} else if (dir == DIR_DOWN) {
+		/* grow up */
+		assert ((head->y >= len - 1) && (head->y < l->h_tile_count));
+
+		while (len > 0) {
+			node = addNode(node, node->x, node->y - 1);
+			len -= 1;
+		}
+	} else if (dir == DIR_UP) {
+		/* grow down */
+		assert ((head->y >= 0) && (head->y + len < l->h_tile_count));
+
+		while (len > 0) {
+			node = addNode(node, node->x, node->y + 1);
+			len -= 1;
+		}
+
+	}
 }
 
-static void set_init_values(struct game_ctx* g) {
+static void init_level_values(struct level_state* st) {
+	for (unsigned i = 0; i < countof(st->eat_states); ++i) {
+		st->eat_states[i] = EAT_LIVE;
+	}
+}
+
+static void init_curr_level(struct game_ctx* g, int level_num) {
+	g->curr_level_num = level_num;
+
+	g->curr_level.def = &g->level_defs[g->curr_level_num];
+	g->curr_level.st = &g->level_states[g->curr_level_num];
+	init_level_values(g->curr_level.st);
+	g->dir = g->curr_level.def->snake_start_dir;
+
+	g->head->x = g->curr_level.def->snake_start.x;
+	g->head->y = g->curr_level.def->snake_start.y;
+	g->head->next = NULL;
+
+	init_snake(g->head, 3, g->curr_level.def->snake_start_dir, g->curr_level.def);
+}
+
+static void init_game_values(struct game_ctx* g) {
 	// free previous memory in case of restart
-	for (struct node *n = g->head->next, *temp; n != NULL;) {
+	for (struct node* n = g->head->next, * temp; n != NULL;) {
 		temp = n->next;
 		//TraceLog(LOG_WARNING, "%p", n);
 		free(n);
 		n = temp;
 	}
 
-	g->head->x = 2;
-	g->head->y = 0;
-	g->head->next = NULL;
-
-	addNode(addNode(g->head, 1, 0), 0, 0);
-
-	g->dir = DIR_RIGHT;
-
 	g->score = 0;
 	g->is_ticked = 0;
 	g->is_game_over = 0;
 	g->is_was_pressed_before_tick = 0;
-	g->is_start_screen = 1;
+	g->is_start_screen = 0;
 	g->is_exit = 0;
 	g->start_screen_snake_x = -4;
 	g->menu_count = 2;
 	g->selected_menu = 0;
 
-	init_levels(g);
-	g->curr_level = 0;
 	g->already_eat_count = 0;
 	g->is_open_next_level_portal = 0;
 	g->is_warping_to_next_level = 0;
 	g->level_start_x = 0;
 	g->level_start_y = 0;
+
+	g->level_defs = get_level_defs();
+	g->level_states = get_level_states();
+
+	init_curr_level(g, 0);
 }
 
 
 struct game_ctx* init_game(void) {
-	struct game_ctx *g = (struct game_ctx *)malloc(sizeof(struct game_ctx));
+	struct game_ctx* g = (struct game_ctx*) malloc(sizeof(struct game_ctx));
 
-	struct node *n = (struct node *)malloc(sizeof(struct node));
+	struct node* n = (struct node*) malloc(sizeof(struct node));
 	g->head = n;
 	g->head->next = NULL;
-	set_init_values(g);
+	init_game_values(g);
 	return g;
 }
 
 void reset_game(struct game_ctx* g) {
-	set_init_values(g);
+	init_game_values(g);
 }
 
 void reset_level(struct game_ctx* g) {
-	int curr_level = g->curr_level;
-	set_init_values(g);
 	g->is_start_screen = 0;
-	g->curr_level = curr_level;
+	init_curr_level(g, g->curr_level_num);
 }

@@ -1,1 +1,1 @@
-void handleControl(struct game_ctx *g);
+void handleControl(struct game_ctx* g);
