@@ -21,6 +21,9 @@ struct next_level_portal {
 
 /* change while game */
 struct level_state {
+	int already_eat_count;
+	unsigned is_open_next_level_portal: 1;
+	unsigned is_warping_to_next_level: 1;
 	enum eat_state eat_states[MAX_EAT_COUNT];
 };
 

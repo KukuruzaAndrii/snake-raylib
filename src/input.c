@@ -32,10 +32,12 @@ void handleControl(struct game_ctx* g) {
 		return;
 	}
 
+	if (IsKeyPressed(KEY_R)) {
+		reset_level(g);
+		return;
+	}
+
 	if (g->is_game_over) {
-		if (IsKeyPressed(KEY_R)) {
-			reset_level(g);
-		}
 		return;
 	}
 
@@ -43,8 +45,7 @@ void handleControl(struct game_ctx* g) {
 		return;
 	}
 
-
-	if (g->is_warping_to_next_level) {
+	if (g->curr_level.st->is_warping_to_next_level) {
 		return;
 	}
 

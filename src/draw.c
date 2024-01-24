@@ -71,7 +71,7 @@ static void drawSnake(struct game_ctx* g) {
 		body_c = SNAKE_GAME_OVER_COLOR;
 		head_c = SNAKE_GAME_OVER_COLOR;
 	}
-	if (g->is_warping_to_next_level) {
+	if (g->curr_level.st->is_warping_to_next_level) {
 		head_c = SNAKE_BODY_COLOR;
 	}
 
@@ -195,7 +195,7 @@ static void draw_level(struct game_ctx* g) {
 
 	draw_level_grid(l, g->level_start_x, g->level_start_y);
 
-	if (g->is_open_next_level_portal) {
+	if (g->curr_level.st->is_open_next_level_portal) {
 		draw_next_level_portal(g);
 	}
 }

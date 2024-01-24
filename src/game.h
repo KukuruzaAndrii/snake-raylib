@@ -24,9 +24,6 @@ struct game_ctx {
 	struct level_state* level_states;
 	int curr_level_num;
 	struct level curr_level;
-	int already_eat_count;
-	unsigned is_open_next_level_portal: 1;
-	unsigned is_warping_to_next_level: 1;
 
 	int level_start_x;
 	int level_start_y;

@@ -90,7 +90,7 @@ static unsigned checkEat(struct game_ctx* g) {
 			// g->eat.y = next_eat_pos.y;
 			eat_states[i] = EAT_NO_EAT;
 			g->score += 1;
-			g->already_eat_count += 1;
+			l.st->already_eat_count += 1;
 			return 1;
 		}
 	}
@@ -117,6 +117,18 @@ static unsigned check_game_over(struct game_ctx* g) {
 
 static void updateStartScreen(struct game_ctx* g) { g->start_screen_snake_x++; }
 
+static void check_level(struct node* head, struct level l) {
+	if (l.st->already_eat_count == l.def->eat_count) {
+		l.st->is_open_next_level_portal = 1;
+	}
+	if (l.st->is_open_next_level_portal) {
+		if (head->x == l.def->nl_portal.x &&
+			head->y == l.def->nl_portal.y) {
+			l.st->is_warping_to_next_level = 1;
+		}
+	}
+}
+
 void UpdateFrame(struct game_ctx* g) {
 	if (g->is_start_screen) {
 		updateStartScreen(g);
@@ -134,17 +146,10 @@ void UpdateFrame(struct game_ctx* g) {
 	if (!g->is_eat) {
 		shrinkSnake(g);
 	}
-	if (g->already_eat_count == g->curr_level.def->eat_count) {
-		g->is_open_next_level_portal = 1;
-	}
-	if (g->is_open_next_level_portal) {
-		if (g->head->x == g->curr_level.def->nl_portal.x &&
-			g->head->y == g->curr_level.def->nl_portal.y) {
-			g->is_warping_to_next_level = 1;
-		}
-	}
 
-	if (g->is_warping_to_next_level) {
+	check_level(g->head, g->curr_level);
+
+	if (g->curr_level.st->is_warping_to_next_level) {
 		remove_head(g);
 	}
 }

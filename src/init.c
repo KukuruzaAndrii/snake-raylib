@@ -58,6 +58,9 @@ static void init_level_values(struct level_state* st) {
 	for (unsigned i = 0; i < countof(st->eat_states); ++i) {
 		st->eat_states[i] = EAT_LIVE;
 	}
+	st->already_eat_count = 0;
+	st->is_open_next_level_portal = 0;
+	st->is_warping_to_next_level = 0;
 }
 
 static void init_curr_level(struct game_ctx* g, int level_num) {
@@ -94,9 +97,6 @@ static void init_game_values(struct game_ctx* g) {
 	g->menu_count = 2;
 	g->selected_menu = 0;
 
-	g->already_eat_count = 0;
-	g->is_open_next_level_portal = 0;
-	g->is_warping_to_next_level = 0;
 	g->level_start_x = 0;
 	g->level_start_y = 0;
 
@@ -123,5 +123,6 @@ void reset_game(struct game_ctx* g) {
 
 void reset_level(struct game_ctx* g) {
 	g->is_start_screen = 0;
+	g->is_game_over = 0;
 	init_curr_level(g, g->curr_level_num);
 }
